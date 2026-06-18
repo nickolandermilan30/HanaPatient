@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -11,6 +11,10 @@ import { ref, set } from 'firebase/database';
 
 export default function Register() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isLargeScreen = width > 600;
+
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', middleName: '', sex: '', age: '',
     dob: new Date(), address: '', contact: '', email: '', occupation: '',
@@ -47,16 +51,8 @@ export default function Register() {
       const user = userCredential.user;
 
       await set(ref(db, 'users/' + user.uid), {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        middleName: formData.middleName,
-        sex: formData.sex,
-        age: formData.age,
-        dob: formData.dob.toISOString(),
-        address: formData.address,
-        contact: formData.contact,
-        email: formData.email,
-        occupation: formData.occupation
+        ...formData,
+        dob: formData.dob.toISOString()
       });
 
       Alert.alert("Success", "Account created successfully!");
@@ -68,46 +64,41 @@ export default function Register() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Create Account</Text>
-        <Text style={styles.subHeaderText}>Join our beautiful community</Text>
-      </View>
-      
-      <ScrollView style={styles.bottomSection} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Create Account</Text>
+          <Text style={styles.subHeaderText}>Join our community today</Text>
+        </View>
+        
+        <View style={[styles.card, { width: isLargeScreen ? '50%' : '90%' }]}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
           
           <View style={styles.row}>
-            <TextInput style={[styles.input, { flex: 1 }]} placeholder="First Name" onChangeText={(v) => handleInputChange('firstName', v)} />
-            <TextInput style={[styles.input, { flex: 1, marginLeft: 10 }]} placeholder="Middle" onChangeText={(v) => handleInputChange('middleName', v)} />
+            <TextInput style={[styles.input, { flex: 2 }]} placeholder="First Name" onChangeText={(v) => handleInputChange('firstName', v)} />
+            <TextInput style={[styles.input, { flex: 1, marginLeft: 10 }]} placeholder="M.I." onChangeText={(v) => handleInputChange('middleName', v)} />
           </View>
           <TextInput style={styles.input} placeholder="Last Name" onChangeText={(v) => handleInputChange('lastName', v)} />
 
           <View style={styles.row}>
-            <View style={[styles.dropdownContainer, { flex: 1 }]}>
+            <View style={[styles.dropdownContainer, { flex: 2 }]}>
               <RNPickerSelect 
                 onValueChange={(v) => handleInputChange('sex', v)} 
                 items={[{ label: 'Male', value: 'male' }, { label: 'Female', value: 'female' }]} 
                 placeholder={{ label: 'Sex', value: null }} 
               />
             </View>
-            <TextInput style={[styles.input, { flex: 0.5, marginLeft: 10 }]} placeholder="Age" keyboardType="numeric" onChangeText={(v) => handleInputChange('age', v)} />
+            <TextInput style={[styles.input, { flex: 1, marginLeft: 10 }]} placeholder="Age" keyboardType="numeric" onChangeText={(v) => handleInputChange('age', v)} />
           </View>
 
-          {/* Date Picker Logic for Web and Mobile */}
-          {Platform.OS === 'web' ? (
-            <input 
-              type="date" 
-              style={styles.webDateInput}
-              onChange={(e) => handleInputChange('dob', new Date(e.target.value))}
-            />
+          {isWeb ? (
+            <input type="date" style={styles.webDateInput} onChange={(e) => handleInputChange('dob', new Date(e.target.value))} />
           ) : (
             <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-              <Text style={{color: '#666'}}>Date of Birth: {formData.dob.toLocaleDateString()}</Text>
+              <Text style={{color: '#666'}}>Birthdate: {formData.dob.toLocaleDateString()}</Text>
             </TouchableOpacity>
           )}
 
-          {Platform.OS !== 'web' && showDatePicker && (
+          {!isWeb && showDatePicker && (
             <DateTimePicker value={formData.dob} mode="date" display="default" onChange={onDateChange} />
           )}
 
@@ -132,14 +123,13 @@ export default function Register() {
           </View>
           
           <TouchableOpacity style={styles.nextButton} onPress={handleRegister}>
-            <Text style={styles.nextButtonText}>Next Step</Text>
+            <Text style={styles.nextButtonText}>Register</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.loginRedirect} onPress={() => router.push('/Layout/Login')}>
-            <Text style={styles.loginRedirectText}>I already have an account? Login</Text>
+            <Text style={styles.loginRedirectText}>Already have an account? Login</Text>
           </TouchableOpacity>
         </View>
-        <View style={{ height: 100 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -147,21 +137,21 @@ export default function Register() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#BA68C8' },
-  header: { padding: 40, paddingTop: 80, alignItems: 'center' },
-  headerText: { fontSize: 32, fontWeight: '800', color: '#FFF' },
+  scrollContent: { alignItems: 'center', paddingBottom: 50 },
+  header: { paddingVertical: 40, alignItems: 'center' },
+  headerText: { fontSize: 28, fontWeight: '800', color: '#FFF' },
   subHeaderText: { color: '#F3E5F5', marginTop: 5 },
-  bottomSection: { backgroundColor: '#FCE4EC', borderTopLeftRadius: 50, borderTopRightRadius: 50, paddingHorizontal: 20 },
-  card: { marginTop: 30, backgroundColor: '#FFF', padding: 25, borderRadius: 30, shadowColor: '#BA68C8', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#7B1FA2', marginBottom: 15, marginTop: 10 },
-  input: { backgroundColor: '#F5F5F5', padding: 15, borderRadius: 15, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7' },
-  webDateInput: { backgroundColor: '#F5F5F5', padding: 15, borderRadius: 15, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7', fontSize: 16 },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 15, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7' },
-  passInput: { flex: 1, padding: 15 },
+  card: { backgroundColor: '#FFF', padding: 30, borderRadius: 30, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#7B1FA2', marginBottom: 15, marginTop: 10 },
+  input: { backgroundColor: '#F9F9F9', padding: 14, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#EEE' },
+  webDateInput: { backgroundColor: '#F9F9F9', padding: 14, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#EEE', width: '100%', fontSize: 16 },
+  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9F9', borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#EEE' },
+  passInput: { flex: 1, padding: 14 },
   eyeIcon: { paddingRight: 15 },
-  row: { flexDirection: 'row' },
-  dropdownContainer: { backgroundColor: '#F5F5F5', borderRadius: 15, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7', justifyContent: 'center' },
-  nextButton: { backgroundColor: '#BA68C8', paddingVertical: 18, borderRadius: 20, alignItems: 'center', marginTop: 20 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  dropdownContainer: { backgroundColor: '#F9F9F9', borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#EEE', justifyContent: 'center' },
+  nextButton: { backgroundColor: '#7B1FA2', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 15 },
   nextButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  loginRedirect: { marginTop: 20, alignItems: 'center' },
-  loginRedirectText: { color: '#7B1FA2', fontWeight: '600', textDecorationLine: 'underline' }
+  loginRedirect: { marginTop: 15, alignItems: 'center' },
+  loginRedirectText: { color: '#7B1FA2', fontWeight: '600' }
 });
