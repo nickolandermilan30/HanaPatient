@@ -46,18 +46,22 @@ export default function Register() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      await set(ref(db, 'users/' + user.uid), {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        middleName: formData.middleName,
-        sex: formData.sex,
-        age: formData.age,
-        dob: formData.dob.toISOString(),
-        address: formData.address,
-        contact: formData.contact,
-        email: formData.email,
-        occupation: formData.occupation
-      });
+
+await set(ref(db, 'users/' + user.uid), {
+  firstName: formData.firstName,
+  lastName: formData.lastName,
+  middleName: formData.middleName,
+  sex: formData.sex,
+  age: formData.age,
+  dob: formData.dob.toISOString(),
+  address: formData.address,
+  contact: formData.contact,
+  email: formData.email,
+  occupation: formData.occupation,
+  role: 'user' 
+});
+
+
 
       Alert.alert("Success", "Account created successfully!");
       router.push('/Layout/RegisterFillUp');
@@ -81,23 +85,28 @@ export default function Register() {
           <TextInput style={styles.input} placeholder="Middle Name" onChangeText={(v) => handleInputChange('middleName', v)} />
           <TextInput style={styles.input} placeholder="Last Name" onChangeText={(v) => handleInputChange('lastName', v)} />
 
-          <View style={styles.dropdownContainer}>
-            <RNPickerSelect 
-              onValueChange={(v) => handleInputChange('sex', v)} 
-              items={[{ label: 'Male', value: 'male' }, { label: 'Female', value: 'female' }]} 
-              placeholder={{ label: 'Select Sex', value: null }} 
-            />
+          {/* Wrapper para sa row layout sa web */}
+          <View style={styles.rowContainer}>
+            <View style={[styles.inlineInput, { flex: 1 }]}>
+                <RNPickerSelect 
+                    onValueChange={(v) => handleInputChange('sex', v)} 
+                    items={[{ label: 'Male', value: 'male' }, { label: 'Female', value: 'female' }]} 
+                    placeholder={{ label: 'Sex', value: null }} 
+                />
+            </View>
+            
+            <TextInput style={[styles.inlineInput, { flex: 1 }]} placeholder="Age" keyboardType="numeric" onChangeText={(v) => handleInputChange('age', v)} />
+            
+            <View style={{ flex: 1 }}>
+                {Platform.OS === 'web' ? (
+                    <input type="date" style={styles.webDateInput} onChange={(e) => handleInputChange('dob', new Date(e.target.value))} />
+                ) : (
+                    <TouchableOpacity style={styles.inlineInput} onPress={() => setShowDatePicker(true)}>
+                    <Text style={{color: '#666'}}>DOB: {formData.dob.toLocaleDateString()}</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
           </View>
-          
-          <TextInput style={styles.input} placeholder="Age" keyboardType="numeric" onChangeText={(v) => handleInputChange('age', v)} />
-
-          {Platform.OS === 'web' ? (
-            <input type="date" style={styles.webDateInput} onChange={(e) => handleInputChange('dob', new Date(e.target.value))} />
-          ) : (
-            <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-              <Text style={{color: '#666'}}>Date of Birth: {formData.dob.toLocaleDateString()}</Text>
-            </TouchableOpacity>
-          )}
 
           {Platform.OS !== 'web' && showDatePicker && (
             <DateTimePicker value={formData.dob} mode="date" display="default" onChange={onDateChange} />
@@ -145,8 +154,17 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#FFF', marginHorizontal: 20, padding: 20, borderRadius: 25, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#7B1FA2', marginBottom: 15, marginTop: 10 },
   input: { backgroundColor: '#F9F9F9', padding: 15, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7' },
-  webDateInput: { backgroundColor: '#F9F9F9', padding: 15, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7', width: '100%' },
-  dropdownContainer: { backgroundColor: '#F9F9F9', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7', paddingHorizontal: 10 },
+  
+  // Row para sa web
+  rowContainer: { 
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column', 
+    gap: 10, 
+    marginBottom: 12 
+  },
+  inlineInput: { backgroundColor: '#F9F9F9', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#E1BEE7' },
+  
+  webDateInput: { backgroundColor: '#F9F9F9', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#E1BEE7', width: '100%', height: 50 },
+  
   passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9F9', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7' },
   passInput: { flex: 1, padding: 15 },
   eyeIcon: { paddingRight: 15 },
