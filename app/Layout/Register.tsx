@@ -94,11 +94,20 @@ export default function Register() {
             <TextInput style={[styles.input, { flex: 0.5, marginLeft: 10 }]} placeholder="Age" keyboardType="numeric" onChangeText={(v) => handleInputChange('age', v)} />
           </View>
 
-          <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-            <Text style={{color: '#666'}}>Date of Birth: {formData.dob.toLocaleDateString()}</Text>
-          </TouchableOpacity>
+          {/* Date Picker Logic for Web and Mobile */}
+          {Platform.OS === 'web' ? (
+            <input 
+              type="date" 
+              style={styles.webDateInput}
+              onChange={(e) => handleInputChange('dob', new Date(e.target.value))}
+            />
+          ) : (
+            <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+              <Text style={{color: '#666'}}>Date of Birth: {formData.dob.toLocaleDateString()}</Text>
+            </TouchableOpacity>
+          )}
 
-          {showDatePicker && (
+          {Platform.OS !== 'web' && showDatePicker && (
             <DateTimePicker value={formData.dob} mode="date" display="default" onChange={onDateChange} />
           )}
 
@@ -126,7 +135,6 @@ export default function Register() {
             <Text style={styles.nextButtonText}>Next Step</Text>
           </TouchableOpacity>
 
-          {/* Login Redirection Button */}
           <TouchableOpacity style={styles.loginRedirect} onPress={() => router.push('/Layout/Login')}>
             <Text style={styles.loginRedirectText}>I already have an account? Login</Text>
           </TouchableOpacity>
@@ -146,6 +154,7 @@ const styles = StyleSheet.create({
   card: { marginTop: 30, backgroundColor: '#FFF', padding: 25, borderRadius: 30, shadowColor: '#BA68C8', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#7B1FA2', marginBottom: 15, marginTop: 10 },
   input: { backgroundColor: '#F5F5F5', padding: 15, borderRadius: 15, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7' },
+  webDateInput: { backgroundColor: '#F5F5F5', padding: 15, borderRadius: 15, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7', fontSize: 16 },
   passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 15, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7' },
   passInput: { flex: 1, padding: 15 },
   eyeIcon: { paddingRight: 15 },
