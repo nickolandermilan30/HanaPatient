@@ -22,7 +22,10 @@ export default function FPD() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#4A148C" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.topApplyButton}>
+              <TouchableOpacity 
+          style={styles.topApplyButton} 
+          onPress={() => router.push('/Layout/Apply/FPDA')}
+        >
           <Text style={styles.topApplyText}>Apply</Text>
         </TouchableOpacity>
       </View>
@@ -73,7 +76,7 @@ export default function FPD() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F4FF' },
-  topHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, paddingTop: 10 },
+  topHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, paddingTop: 50 },
   backButton: { padding: 5 },
   topApplyButton: { backgroundColor: '#4A148C', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
   topApplyText: { color: '#FFF', fontWeight: 'bold' },

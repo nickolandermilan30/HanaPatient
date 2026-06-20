@@ -6,21 +6,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth, db, storage } from '../../Firebase/FirebaseConfig'; 
 import { ref as dbRef, push, set } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { signOut } from 'firebase/auth';
 
 const services = [
-  { id: '1', title: 'Tooth Extraction', sub: '(Bunot)', icon: require('../../Image/extraction.png'), path: '/Layout/Services/TE' },
-  { id: '2', title: 'Tooth Restoration', sub: '(Pasta)', icon: require('../../Image/restoration.png'), path: '/Layout/Services/TR' },
-  { id: '3', title: 'Oral Prophylaxis', sub: '(Linis)', icon: require('../../Image/prophylaxis.png'), path: '/Layout/Services/OP' },
-  { id: '4', title: 'Complete Denture', sub: '(Pustiso sa lahat ng ngipin)', icon: require('../../Image/complete_denture.png'), path: '/Layout/Services/CD' },
-  { id: '5', title: 'Fixed Partial Denture', sub: '(Nakapirming pustiso)', icon: require('../../Image/fixed_denture.png'), path: '/Layout/Services/FPD' },
-  { id: '6', title: 'Removable Partial Denture', sub: '(Natatanggal na pustiso)', icon: require('../../Image/removable.png'), path: '/Layout/Services/RPD' },
-  { id: '7', title: 'Bleaching', sub: '(Pagpaputi ng ngipin)', icon: require('../../Image/bleaching.png'), path: '/Layout/Services/BL' },
-  { id: '8', title: 'Fluoride Application', sub: '(Proteksyon sa ngipin)', icon: require('../../Image/fluoride.png'), path: '/Layout/Services/FA' },
-  { id: '9', title: 'Sealant Application', sub: '(Sealant sa ngipin)', icon: require('../../Image/sealant.png'), path: '/Layout/Services/SA' },
+  { id: '1', title: 'Tooth Extraction', sub: 'Bunot', icon: require('../../Image/extraction.png'), path: '/Layout/Services/TE' },
+  { id: '2', title: 'Tooth Restoration', sub: 'Pasta', icon: require('../../Image/restoration.png'), path: '/Layout/Services/TR' },
+  { id: '3', title: 'Oral Prophylaxis', sub: 'Linis', icon: require('../../Image/prophylaxis.png'), path: '/Layout/Services/OP' },
+  { id: '4', title: 'Complete Denture', sub: 'Pustiso', icon: require('../../Image/complete_denture.png'), path: '/Layout/Services/CD' },
+  { id: '5', title: 'Fixed Partial Denture', sub: 'Fixed Pustiso', icon: require('../../Image/fixed_denture.png'), path: '/Layout/Services/FPD' },
+  { id: '6', title: 'Removable Partial Denture', sub: 'Removable', icon: require('../../Image/removable.png'), path: '/Layout/Services/RPD' },
+  { id: '7', title: 'Bleaching', sub: 'Pagpaputi', icon: require('../../Image/bleaching.png'), path: '/Layout/Services/BL' },
+  { id: '8', title: 'Fluoride', sub: 'Proteksyon', icon: require('../../Image/fluoride.png'), path: '/Layout/Services/FA' },
+  { id: '9', title: 'Sealant', sub: 'Sealant', icon: require('../../Image/sealant.png'), path: '/Layout/Services/SA' },
 ];
 
 export default function Dashboard() {
   const [modalVisible, setModalVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [concernText, setConcernText] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,16 @@ export default function Dashboard() {
   useEffect(() => {
     if (auth.currentUser) setUserEmail(auth.currentUser.email || '');
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setLogoutModalVisible(false);
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert("Logout Error", error.message);
+    }
+  };
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -39,10 +51,13 @@ export default function Dashboard() {
     if (!result.canceled) setImages(prev => [...prev, ...result.assets.map(a => a.uri)]);
   };
 
+  const removeImage = (uriToRemove: string) => {
+    setImages(prev => prev.filter(uri => uri !== uriToRemove));
+  };
+
   const submitConcern = async () => {
     if (!concernText) return Alert.alert("Ops!", "Please write your concern.");
     setLoading(true);
-
     try {
       const imageUrls = await Promise.all(images.map(async (uri) => {
         const response = await fetch(uri);
@@ -52,16 +67,9 @@ export default function Dashboard() {
         await uploadBytes(sRef, blob);
         return await getDownloadURL(sRef);
       }));
-
       const newConcernRef = push(dbRef(db, 'concerns'));
-      await set(newConcernRef, {
-        email: userEmail,
-        concern: concernText,
-        images: imageUrls,
-        date: new Date().toISOString()
-      });
-
-      Alert.alert("Success", "Concern submitted successfully!");
+      await set(newConcernRef, { email: userEmail, concern: concernText, images: imageUrls, date: new Date().toISOString() });
+      Alert.alert("Success", "Concern submitted!");
       setModalVisible(false);
       setConcernText('');
       setImages([]);
@@ -74,13 +82,22 @@ export default function Dashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#E1BEE7" />
+      <StatusBar barStyle="light-content" />
       
       <View style={styles.header}>
+        <View style={styles.actionBox}>
+          <TouchableOpacity onPress={() => router.push('/Layout/Account')} style={styles.iconCircle}>
+            <Ionicons name="person" size={22} color="#4A148C" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setLogoutModalVisible(true)} style={styles.iconCircle}>
+            <Ionicons name="log-out" size={22} color="#D32F2F" />
+          </TouchableOpacity>
+        </View>
+ 
         <View style={styles.logoCircle}>
           <Image source={require('../../Image/Logo.png')} style={styles.logo} />
         </View>
-        <Text style={styles.headerTitle}>Which Dental Service do you need?</Text>
+        <Text style={styles.headerTitle}>Dental Services</Text>
       </View>
 
       <FlatList
@@ -98,49 +115,57 @@ export default function Dashboard() {
       />
 
       <TouchableOpacity style={styles.otherButton} onPress={() => setModalVisible(true)}>
-        <Text style={styles.otherButtonText}>Other Concern</Text>
+        <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FFF" />
+        <Text style={styles.otherButtonText}> Other Concern</Text>
       </TouchableOpacity>
 
+      {/* Logout Modal */}
+      <Modal animationType="fade" transparent={true} visible={logoutModalVisible}>
+        <View style={styles.centeredModal}>
+          <View style={styles.logoutBox}>
+            <Text style={styles.logoutTitle}>Logout</Text>
+            <Text style={styles.logoutText}>Are you sure you want to exit?</Text>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity style={[styles.btn, styles.cancelBtn]} onPress={() => setLogoutModalVisible(false)}>
+                <Text style={{fontWeight: 'bold', color: '#555'}}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: '#4A148C' }]} onPress={handleLogout}>
+                <Text style={{color: '#FFF', fontWeight: 'bold'}}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Concern Modal */}
       <Modal animationType="slide" transparent={true} visible={modalVisible}>
         <View style={styles.modalView}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Other Concerns</Text>
-            <Text style={styles.subtitle}>If your concern is not in the list, tell us about it below.</Text>
-
-            <Text style={styles.label}>Email Address</Text>
-            <View style={styles.emailContainer}>
-               <Ionicons name="mail" size={20} color="#7B1FA2" style={{marginRight: 10}}/>
-               <Text style={styles.emailText}>{userEmail}</Text>
-            </View>
-
-            <Text style={styles.label}>Your Concern</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="Type your concern here..." 
-              multiline 
-              value={concernText} 
-              onChangeText={setConcernText} 
-            />
+            <Text style={styles.modalTitle}>Other Concern</Text>
+            <TextInput style={styles.input} placeholder="Detail your concern..." multiline value={concernText} onChangeText={setConcernText} />
             
             <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
               <Ionicons name="camera" size={20} color="#FFF" />
-              <Text style={styles.uploadButtonText}> Upload Photos</Text>
+              <Text style={styles.uploadButtonText}> Attach Photos</Text>
             </TouchableOpacity>
 
             <ScrollView horizontal style={styles.imageScroll}>
-              {images.map((uri, i) => <Image key={i} source={{ uri }} style={styles.thumbnail} />)}
+              {images.map((uri, i) => (
+                <TouchableOpacity key={i} onPress={() => removeImage(uri)}>
+                  <Image source={{ uri }} style={styles.thumbnail} />
+                  <View style={styles.removeBadge}><Ionicons name="close" size={20} color="#FFF"/></View>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
-
-            {loading ? <ActivityIndicator size="large" color="#4A148C" /> : (
-              <View style={styles.actionButtons}>
-                <TouchableOpacity style={[styles.btn, styles.cancelBtn]} onPress={() => setModalVisible(false)}>
-                  <Text style={{color: '#666', fontWeight: 'bold'}}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.btn, styles.submitBtn]} onPress={submitConcern}>
-                  <Text style={{color: '#FFF', fontWeight: 'bold'}}>Submit Now</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            
+            <View style={styles.actionButtons}>
+              <TouchableOpacity style={[styles.btn, styles.cancelBtn]} onPress={() => setModalVisible(false)}>
+                <Text style={{fontWeight: 'bold', color: '#555'}}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: '#4A148C' }]} onPress={submitConcern}>
+                {loading ? <ActivityIndicator color="#FFF" /> : <Text style={{color: '#FFF', fontWeight: 'bold'}}>Submit</Text>}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -149,33 +174,34 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F4FF', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  header: { alignItems: 'center', padding: 15, backgroundColor: '#E1BEE7', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, paddingBottom: 40 },
-  logoCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  logo: { width: 65, height: 65 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', textAlign: 'center', paddingHorizontal: 20 },
-  grid: { paddingHorizontal: 10, paddingBottom: 20, alignItems: 'center' },
-  card: { width: 105, height: 150, backgroundColor: '#E1BEE7', margin: 6, borderRadius: 15, alignItems: 'center', padding: 8 },
-  icon: { width: 60, height: 60, marginBottom: 8 },
-  cardTitle: { fontSize: 10, fontWeight: 'bold', textAlign: 'center', color: '#2C0657' },
-  cardSub: { fontSize: 8, textAlign: 'center', color: '#4A148C', marginTop: 4 },
-  otherButton: { backgroundColor: '#E1BEE7', padding: 20, margin: 20, borderRadius: 20, alignItems: 'center' },
-  otherButtonText: { fontSize: 18, fontWeight: 'bold', color: '#4A148C' },
-  
+  container: { flex: 1, backgroundColor: '#F8F9FE' },
+  header: { paddingHorizontal: 25, paddingTop: 50, paddingBottom: 30, backgroundColor: '#E1BEE7', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, alignItems: 'center',  },
+  actionBox: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 10 },
+  iconCircle: { width: 45, height: 45, borderRadius: 25, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  logoCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  logo: { width: 60, height: 60 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  grid: { padding: 10 },
+  card: { width: '30%', backgroundColor: '#FFF', margin: 5, borderRadius: 15, alignItems: 'center', padding: 10, elevation: 3 },
+  icon: { width: 40, height: 40, marginBottom: 5 },
+  cardTitle: { fontSize: 10, fontWeight: 'bold', textAlign: 'center', color: '#000000' },
+  cardSub: { fontSize: 8, textAlign: 'center', color: '#888', marginTop: 2 },
+  otherButton: { flexDirection: 'row', backgroundColor: '#E1BEE7', padding: 18, margin: 20, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  otherButtonText: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
+  centeredModal: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+  logoutBox: { width: '85%', backgroundColor: '#FFF', padding: 30, borderRadius: 30, alignItems: 'center' },
+  logoutTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C' },
+  logoutText: { marginVertical: 15 },
   modalView: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, height: '85%' },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#4A148C' },
-  subtitle: { fontSize: 14, color: '#7B1FA2', marginBottom: 20 },
-  label: { fontSize: 12, fontWeight: 'bold', color: '#4A148C', marginBottom: 8, marginTop: 10 },
-  emailContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3E5F5', padding: 12, borderRadius: 12, marginBottom: 5 },
-  emailText: { color: '#4A148C', fontWeight: '600' },
-  input: { borderWidth: 1, borderColor: '#E1BEE7', borderRadius: 12, padding: 15, height: 120, textAlignVertical: 'top', backgroundColor: '#F9F9F9' },
-  uploadButton: { flexDirection: 'row', backgroundColor: '#BA68C8', padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginVertical: 15 },
-  uploadButtonText: { color: '#FFF', fontWeight: 'bold', marginLeft: 8 },
-  imageScroll: { marginBottom: 20, height: 90 },
-  thumbnail: { width: 80, height: 80, borderRadius: 12, marginRight: 10 },
-  actionButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  btn: { padding: 18, borderRadius: 15, width: '48%', alignItems: 'center' },
-  cancelBtn: { backgroundColor: '#E0E0E0' },
-  submitBtn: { backgroundColor: '#4A148C' }
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 30, height: '75%' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#4A148C', marginBottom: 15 },
+  input: { borderWidth: 1, borderColor: '#E1BEE7', borderRadius: 15, padding: 15, height: 100, textAlignVertical: 'top' },
+  uploadButton: { flexDirection: 'row', backgroundColor: '#E1BEE7', padding: 15, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginVertical: 15 },
+  uploadButtonText: { color: '#ffffff', fontWeight: 'bold', marginLeft: 8 },
+  thumbnail: { width: 70, height: 70, borderRadius: 15, marginRight: 10 },
+  removeBadge: { position: 'absolute', right: 10, top: 0, backgroundColor: 'red', borderRadius: 10, width: 20, height: 20, alignItems: 'center' },
+  imageScroll: { marginBottom: 20 },
+  actionButtons: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
+  btn: { padding: 15, borderRadius: 15, width: '48%', alignItems: 'center' },
+  cancelBtn: { backgroundColor: '#F0F0F0' }
 });
