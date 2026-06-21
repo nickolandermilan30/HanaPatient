@@ -15,18 +15,26 @@ export default function Login() {
   const [modalVisible, setModalVisible] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields.");
-      return;
-    }
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
+const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert("Error", "Please fill in all fields.");
+    return;
+  }
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // I-check kung admin ang email (halimbawa: admin@dental.com)
+    // O kaya gumamit ng ibang logic gaya ng custom claims
+    if (email.toLowerCase().includes("admin")) { 
+      router.replace('/Layout/Admin/AdminHome');
+    } else {
       router.replace('/Layout/Home');
-    } catch (error: any) {
-      Alert.alert("Login Failed", error.message);
     }
-  };
+  } catch (error: any) {
+    Alert.alert("Login Failed", error.message);
+  }
+};
 
   const handlePasswordReset = async () => {
     if (!resetEmail) {
@@ -123,7 +131,7 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#E1BEE7' },
+  container: { flex: 1, backgroundColor: '#E1BEE7', },
   topSection: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   logoContainer: { width: 240, height: 240, borderRadius: 125, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginBottom: 20, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3 },
   logo: { width: 130, height: 130 },
