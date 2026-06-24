@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -46,6 +47,19 @@ export default function BLA() {
 
     setLoading(true);
     try {
+      // 1. I-upload ang bawat image sa Firebase Storage
+      const uploadedUrls = await Promise.all(
+        selectedImages.map(async (uri) => {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const filename = `bleaching/${Date.now()}_${Math.random()}.jpg`;
+          const imageRef = storageRef(getStorage(), filename);
+          await uploadBytes(imageRef, blob);
+          return await getDownloadURL(imageRef); // Dito nakukuha ang public URL
+        })
+      );
+
+      // 2. I-save ang data sa Realtime Database
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
@@ -53,14 +67,15 @@ export default function BLA() {
         user: userEmail,
         type: "Bleaching",
         selectedShade: selectedShade,
-        imageUris: selectedImages,
+        imageUris: uploadedUrls, // Dito na papasok ang array ng mga public URL
         timestamp: new Date().toISOString()
       });
 
       Alert.alert("Success", "Request Submitted Successfully!");
       router.back();
     } catch (error) {
-      Alert.alert("Error", "Failed to submit request.");
+      console.error(error);
+      Alert.alert("Error", "Failed to upload images and submit request.");
     } finally {
       setLoading(false);
     }
@@ -169,5 +184,5 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#4A148C' },
   shadeItem: { flex: 1, alignItems: 'center', margin: 10, padding: 10, backgroundColor: '#F3E5F5', borderRadius: 10 },
   shadeLabel: { marginTop: 5, fontWeight: 'bold', color: '#4A148C' },
-  closeButton: { marginTop: 20, backgroundColor: '#4A148C', padding: 15, borderRadius: 10, alignItems: 'center' }
+  closeButton: { marginTop: 20, backgroundColor: '#4A148C', padding: 15, borderRadius: 10, alignItems: 'center' } 
 });

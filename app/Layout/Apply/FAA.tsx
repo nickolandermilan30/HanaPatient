@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, Modal, FlatList, ActivityIndicator } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -63,21 +64,36 @@ export default function FAA() {
 
     setLoading(true);
     try {
+      // 1. I-upload ang bawat image sa Firebase Storage
+      const uploadedUrls = await Promise.all(
+        selectedImages.map(async (uri) => {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          // Nilagyan natin ng folder name na 'fluoride'
+          const filename = `fluoride/${Date.now()}_${Math.random()}.jpg`;
+          const imageRef = storageRef(getStorage(), filename);
+          await uploadBytes(imageRef, blob);
+          return await getDownloadURL(imageRef);
+        })
+      );
+
+      // 2. I-save ang data sa Realtime Database gamit ang Public URLs
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
       await set(newRequestRef, {
         user: userEmail,
-        type: "Fluoride Application", // Updated type
+        type: "Fluoride Application",
         selectedTeeth: selectedTeeth,
-        imageUris: selectedImages,
+        imageUris: uploadedUrls, // Dito na papasok ang public URL
         timestamp: new Date().toISOString()
       });
 
       Alert.alert("Success", "Request Submitted Successfully!");
       router.back();
     } catch (error) {
-      Alert.alert("Error", "Failed to submit request.");
+      console.error(error);
+      Alert.alert("Error", "Failed to upload images and submit request.");
     } finally {
       setLoading(false);
     }

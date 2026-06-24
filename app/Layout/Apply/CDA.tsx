@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,11 +13,10 @@ export default function CDA() {
   const [loading, setLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   
-  // States para sa mga input
   const [visiting, setVisiting] = useState<string | null>(null);
   const [phoneOwner, setPhoneOwner] = useState<string | null>(null);
   const [fbName, setFbName] = useState('');
-  const [selectedSample, setSelectedSample] = useState<string | null>(null); // State para sa napiling sample picture
+  const [selectedSample, setSelectedSample] = useState<string | null>(null);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -48,6 +48,21 @@ export default function CDA() {
 
     setLoading(true);
     try {
+      const storage = getStorage();
+
+      // 1. I-upload ang bawat image sa Firebase Storage para makuha ang public URL
+      const uploadedUrls = await Promise.all(
+        selectedImages.map(async (uri) => {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const filename = `dentures/${Date.now()}_${Math.random()}.jpg`;
+          const imageRef = storageRef(storage, filename);
+          await uploadBytes(imageRef, blob);
+          return await getDownloadURL(imageRef);
+        })
+      );
+
+      // 2. I-save ang data sa Realtime Database
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
@@ -57,15 +72,16 @@ export default function CDA() {
         visiting3to4Times: visiting,
         phoneOwner: phoneOwner,
         relativeFbName: fbName,
-        selectedDentureType: selectedSample, // Dito mai-save kung Upper o Lower ang pinili
-        imageUris: selectedImages,
+        selectedDentureType: selectedSample,
+        imageUris: uploadedUrls, // Dito na papasok ang public URLs
         timestamp: new Date().toISOString()
       });
 
       Alert.alert("Success", "Application Submitted!");
       router.back();
     } catch (error) {
-      Alert.alert("Error", "Failed to submit.");
+      console.error(error);
+      Alert.alert("Error", "Failed to submit application. Please check your internet connection.");
     } finally {
       setLoading(false);
     }

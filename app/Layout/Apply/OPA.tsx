@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -13,7 +14,6 @@ export default function OPA() {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
 
-  // Gamit ang mga path ng images na binigay mo
   const levels = [
     { id: 'Slight', img: require('../../../assets/Teeth/Slight.png') },
     { id: 'Moderate', img: require('../../../assets/Teeth/Moderate.png') },
@@ -47,21 +47,37 @@ export default function OPA() {
 
     setLoading(true);
     try {
+      const storage = getStorage();
+
+      // 1. I-upload ang bawat image sa Firebase Storage para magkaroon ng public URL
+      const uploadedUrls = await Promise.all(
+        selectedImages.map(async (uri) => {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const filename = `prophylaxis/${Date.now()}_${Math.random()}.jpg`;
+          const imageRef = storageRef(storage, filename);
+          await uploadBytes(imageRef, blob);
+          return await getDownloadURL(imageRef);
+        })
+      );
+
+      // 2. I-save ang data sa Realtime Database gamit ang mga URLs
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
       await set(newRequestRef, {
         user: userEmail,
-        type: "Oral Prophylaxis", // Specific type para sa serbisyong ito
+        type: "Oral Prophylaxis",
         selectedLevel: selectedLevel,
-        imageUris: selectedImages,
+        imageUris: uploadedUrls, // Dito papasok ang public URL na mababasa ng web at mobile
         timestamp: new Date().toISOString()
       });
 
       Alert.alert("Success", "Request Submitted Successfully!");
       router.back();
     } catch (error) {
-      Alert.alert("Error", "Failed to submit request.");
+      console.error(error);
+      Alert.alert("Error", "Failed to upload images. Please try again.");
     } finally {
       setLoading(false);
     }
