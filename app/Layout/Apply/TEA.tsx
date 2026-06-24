@@ -5,6 +5,8 @@ import { ref, push, set } from 'firebase/database';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 
 export default function ToothExtraction() {
   const router = useRouter();
@@ -56,32 +58,46 @@ export default function ToothExtraction() {
   };
 
   const handleSubmit = async () => {
-    if (selectedImages.length === 0) {
-      Alert.alert("Error", "Please attach at least one image.");
-      return;
-    }
+  if (selectedImages.length === 0) {
+    Alert.alert("Error", "Please attach at least one image.");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const dbRef = ref(db, 'Tooth concern');
-      const newRequestRef = push(dbRef);
-      
-      await set(newRequestRef, {
-        user: userEmail,
-        type: "Tooth Extraction",
-        selectedTeeth: selectedTeeth,
-        imageUris: selectedImages, // Naka-save bilang array of strings
-        timestamp: new Date().toISOString()
-      });
+  setLoading(true);
+  try {
+    // 1. I-upload ang bawat image sa storage
+    const uploadedUrls = await Promise.all(
+      selectedImages.map(async (uri) => {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const filename = `extractions/${Date.now()}_${Math.random()}.jpg`;
+        const imageRef = storageRef(getStorage(), filename);
+        await uploadBytes(imageRef, blob);
+        return await getDownloadURL(imageRef);
+      })
+    );
 
-      Alert.alert("Success", "Request Submitted Successfully!");
-      router.back();
-    } catch (error) {
-      Alert.alert("Error", "Failed to submit request.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // 2. I-save ang URL sa Realtime Database
+    const dbRef = ref(db, 'Tooth concern');
+    const newRequestRef = push(dbRef);
+    
+    await set(newRequestRef, {
+      user: userEmail,
+      type: "Tooth Extraction",
+      selectedTeeth: selectedTeeth,
+      imageUris: uploadedUrls, // Dito na papasok ang public URL
+      timestamp: new Date().toISOString()
+    });
+
+    Alert.alert("Success", "Request Submitted Successfully!");
+    router.back();
+  } catch (error) {
+    console.error(error);
+    Alert.alert("Error", "Failed to upload images.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
