@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
-import { ref, push, set } from 'firebase/database'; // Siguraduhing naka-import ang 'set'
+import { ref, push, set } from 'firebase/database';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'; // Import para sa Storage
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -49,22 +50,37 @@ export default function TRA() {
 
     setLoading(true);
     try {
-      // Dito binago ang path para pumasok sa "Tooth concern"
+      const storage = getStorage();
+      
+      // 1. I-upload ang bawat image sa Storage para makuha ang Public URL
+      const uploadedUrls = await Promise.all(
+        selectedImages.map(async (uri) => {
+          const response = await fetch(uri);
+          const blob = await response.blob(); // Ito ang nagpapatakbo sa Web at Mobile
+          const filename = `restorations/${Date.now()}_${Math.random()}.jpg`;
+          const imageRef = storageRef(storage, filename);
+          await uploadBytes(imageRef, blob);
+          return await getDownloadURL(imageRef);
+        })
+      );
+
+      // 2. I-save ang data sa Realtime Database
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
       await set(newRequestRef, {
         user: userEmail,
-        type: "Tooth Restoration", // Nilagay natin bilang Tooth Restoration
-        selectedClass: selectedClass, // Dito papasok yung Class I, II, etc.
-        imageUris: selectedImages,
+        type: "Tooth Restoration",
+        selectedClass: selectedClass,
+        imageUris: uploadedUrls, // Dito na papasok ang public URL na nababasa sa kahit anong device
         timestamp: new Date().toISOString()
       });
 
       Alert.alert("Success", "Restoration Request Submitted!");
       router.back();
     } catch (error) {
-      Alert.alert("Error", "Failed to submit request.");
+      console.error("Upload error:", error);
+      Alert.alert("Error", "Failed to submit request. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -129,6 +145,7 @@ export default function TRA() {
 }
 
 const styles = StyleSheet.create({
+  // (Panatilihin ang iyong existing styles)
   container: { flex: 1, backgroundColor: '#F8F4FF' },
   topHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, padding: 20 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A148C' },
@@ -152,4 +169,4 @@ const styles = StyleSheet.create({
   removeBtn: { position: 'absolute', top: 5, right: 0, backgroundColor: '#FFF', borderRadius: 10 },
   submitButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 15, marginTop: 30, alignItems: 'center' },
   submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
-}); 
+});
