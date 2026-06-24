@@ -84,7 +84,7 @@ export default function AdminHome() {
             </View>
           </View>
         </View>
-      </Modal>
+      </Modal> 
 
       <View style={styles.navbar}>
         {/* Navbar Items */}
