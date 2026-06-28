@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Modal } from 'react-native';
-import { ref, get } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 import { db } from '../../../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -23,67 +23,106 @@ export default function Customer() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const [usersSnap, cSnap, tSnap, appSnap, rejSnap] = await Promise.all([
-      get(ref(db, 'users')),
-      get(ref(db, 'concerns')),
-      get(ref(db, 'Tooth concern')),
-      get(ref(db, 'Approved')),
-      get(ref(db, 'Rejected')),
-    ]);
+  useEffect(() => {
+    // Pag-set up ng references
+    const usersRef = ref(db, 'users');
+    const cRef = ref(db, 'concerns');
+    const tRef = ref(db, 'Tooth concern');
+    const appRef = ref(db, 'Approved');
+    const rejRef = ref(db, 'Rejected');
 
-    const users = usersSnap.val() || {};
-    const dataSources = [
-      { data: cSnap.val() || {}, type: 'General', status: 'Pending' },
-      { data: tSnap.val() || {}, type: 'Tooth', status: 'Pending' },
-      { data: appSnap.val() || {}, type: 'Status', status: 'Approved' },
-      { data: rejSnap.val() || {}, type: 'Status', status: 'Rejected' },
-    ];
+    // Ang onValue ay awtomatikong nag-uupdate kapag may nagbago sa database
+    const handleDataUpdate = () => {
+      setLoading(true);
+      Promise.all([
+        import('firebase/database').then(dbMod => Promise.all([
+          // Dahil onValue ang gamit natin, kailangan natin ng paraan para makuha ang latest
+          // o kaya ay i-wrap ang listeners sa isang main listener.
+        ]))
+      ]);
+    };
 
-    let all: any[] = [];
-    dataSources.forEach(source => {
-      Object.keys(source.data).forEach(k => {
-        const item = source.data[k];
-        const userEmail = item.email || item.user;
-        const userData = Object.values(users).find((u: any) => u.email === userEmail) as any;
-        all.push({
-          ...item,
-          id: k,
-          status: source.status,
-          patientName: userData ? `${userData.firstName} ${userData.lastName}` : 'Unknown'
+    // Real-time listener para sa lahat ng tables
+    const unsub = () => {
+        // Simplified approach: pag-subscribe sa lahat ng nodes
+        const nodes = [
+            { ref: cRef, type: 'General', status: 'Pending' },
+            { ref: tRef, type: 'Tooth', status: 'Pending' },
+            { ref: appRef, type: 'Status', status: 'Approved' },
+            { ref: rejRef, type: 'Status', status: 'Rejected' },
+        ];
+
+        // Fetch users once, then listen to the rest
+        import('firebase/database').then(({ get }) => {
+            get(usersRef).then((usersSnap) => {
+                const users = usersSnap.val() || {};
+                
+                // Set up listeners for all nodes
+                nodes.forEach(node => {
+                    onValue(node.ref, (snapshot) => {
+                        const data = snapshot.val() || {};
+                        const formattedData = Object.keys(data).map(k => {
+                            const item = data[k];
+                            const userEmail = item.email || item.user;
+                            const userData = Object.values(users).find((u: any) => u.email === userEmail) as any;
+                            return {
+                                ...item,
+                                id: k,
+                                status: node.status,
+                                type: item.type || node.type,
+                                patientName: userData ? `${userData.firstName} ${userData.lastName}` : 'Unknown'
+                            };
+                        });
+
+                        setConcerns(prev => {
+                            // Alisin ang lumang data ng node na ito at idagdag ang bago
+                            const filtered = prev.filter(p => p.status !== node.status || (p.status === 'Pending' && node.type !== 'General' && node.type !== 'Tooth'));
+                            return [...filtered, ...formattedData];
+                        });
+                        setLoading(false);
+                    });
+                });
+            });
         });
-      });
-    });
+    };
 
-    setConcerns(all);
-    setLoading(false);
+    unsub();
   }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
 
   const filteredConcerns = concerns.filter(c => c.status === activeTab);
 
-  // Helper para sa kulay ng Tab
   const getTabColor = (tab: string) => {
-    if (tab === 'Pending') return '#2196F3'; // Blue
-    if (tab === 'Approved') return '#4CAF50'; // Green
-    return '#F44336'; // Red
+    if (tab === 'Pending') return '#2196F3';
+    if (tab === 'Approved') return '#4CAF50';
+    return '#F44336';
+  };
+
+  const renderModalContent = (item: any) => {
+    const props = { item, onClose: () => setModalVisible(false) };
+    switch (item.type) {
+      case 'General': return <GenConern {...props} />;
+      case 'Tooth Extraction': return <Extraction {...props} />;
+      case 'Tooth Restoration': return <Restoration {...props} />;
+      case 'Oral Prophylaxis': return <OralProphylaxis {...props} />;
+      case 'Complete Denture Application': return <CompleteDenture {...props} />;
+      case 'Fixed Partial Denture': return <Fixed {...props} />;
+      case 'Removable Partial Denture': return <PartialDenture {...props} />;
+      case 'Bleaching': return <Bleaching {...props} />;
+      case 'Fluoride Application': return <Fluoride {...props} />;
+      case 'Sealants Application': return <Sealant {...props} />;
+      default: return <GenConern {...props} />;
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Patient Records</Text>
 
-      {/* Tabs na may kulay */}
       <View style={styles.tabContainer}>
         {(['Pending', 'Approved', 'Rejected'] as const).map(tab => (
           <TouchableOpacity 
             key={tab} 
-            style={[
-              styles.tab, 
-              activeTab === tab && { backgroundColor: getTabColor(tab) }
-            ]} 
+            style={[styles.tab, activeTab === tab && { backgroundColor: getTabColor(tab) }]} 
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
@@ -91,9 +130,19 @@ export default function Customer() {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} />}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {filteredConcerns.map((item, index) => (
-          <TouchableOpacity key={index} style={styles.card} activeOpacity={0.7} onPress={() => activeTab === 'Pending' && (setSelectedItem(item), setModalVisible(true))}>
+          <TouchableOpacity 
+            key={item.id || index} 
+            style={styles.card} 
+            activeOpacity={0.7} 
+            onPress={() => {
+              if (activeTab === 'Pending') {
+                setSelectedItem(item);
+                setModalVisible(true);
+              }
+            }}
+          >
             <View style={[styles.iconBox, { backgroundColor: item.status === 'Approved' ? '#e8f5e9' : item.status === 'Rejected' ? '#ffebee' : '#e3f2fd' }]}>
               <Ionicons name={item.status === 'Approved' ? 'checkmark-circle' : item.status === 'Rejected' ? 'close-circle' : 'time'} size={24} color={getTabColor(item.status)} />
             </View>
@@ -103,9 +152,6 @@ export default function Customer() {
                 <View style={styles.typeBadge}>
                     <Text style={styles.typeText}>{item.type || 'General'}</Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: getTabColor(item.status) }]}>
-                    <Text style={styles.statusText}>{item.status}</Text>
-                </View>
               </View>
             </View>
             {activeTab === 'Pending' && <Ionicons name="chevron-forward" size={20} color="#ccc" />}
@@ -113,12 +159,10 @@ export default function Customer() {
         ))}
       </ScrollView>
 
-      {/* Modal logic ay mananatili */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         {selectedItem && (
-          // Dito mo i-render ang tamang modal base sa type gaya ng dati
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            {/* Modal Content Placeholder */}
+             {renderModalContent(selectedItem)}
           </View>
         )}
       </Modal>
@@ -139,7 +183,5 @@ const styles = StyleSheet.create({
   info: { marginLeft: 15, flex: 1 },
   name: { fontSize: 16, fontWeight: '700' },
   typeBadge: { backgroundColor: '#F0F0F0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginRight: 6 },
-  typeText: { fontSize: 10, fontWeight: '700', color: '#666', textTransform: 'uppercase' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  statusText: { fontSize: 10, fontWeight: '700', color: '#FFF', textTransform: 'uppercase' }
+  typeText: { fontSize: 10, fontWeight: '700', color: '#666', textTransform: 'uppercase' }
 });
