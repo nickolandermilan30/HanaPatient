@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ref, update } from 'firebase/database';
+import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../../../../Firebase/FirebaseConfig';
 
 const classImages: { [key: string]: any } = {
@@ -15,14 +15,30 @@ const classImages: { [key: string]: any } = {
 
 export default function Restoration({ item, onClose }: { item: any, onClose: () => void }) {
   
-  const updateStatus = async (status: string) => {
+  const moveDataToStatus = async (status: 'Approved' | 'Rejected') => {
     try {
-      const concernRef = ref(db, `Tooth concern/${item.id}`);
-      await update(concernRef, { status: status });
-      Alert.alert("Success", `Restoration concern has been ${status}.`);
-      onClose();
+      // 1. Reference sa lumang data
+      const oldRef = ref(db, `Tooth concern/${item.id}`);
+      // 2. Reference sa bagong destination
+      const newRef = ref(db, `${status}/${item.id}`);
+
+      // Kunin ang data
+      const snapshot = await get(oldRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        
+        // Isulat sa bagong path
+        await set(newRef, { ...data, status: status, processedAt: new Date().toISOString() });
+        
+        // Burahin sa lumang path
+        await remove(oldRef);
+        
+        Alert.alert("Success", `Concern has been moved to ${status}.`);
+        onClose();
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to update status.");
+      console.error(error);
+      Alert.alert("Error", "Failed to move data.");
     }
   };
 
@@ -38,15 +54,14 @@ export default function Restoration({ item, onClose }: { item: any, onClose: () 
 
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.infoCard}>
-            <Text style={styles.label}>Patient Name</Text>
-            <Text style={styles.value}>{item?.patientName}</Text>
+            <Text style={styles.label}>Patient Email</Text>
+            <Text style={styles.value}>{item?.user}</Text>
             
             <Text style={[styles.label, { marginTop: 15 }]}>Date Submitted</Text>
             <Text style={styles.value}>{item?.timestamp ? new Date(item.timestamp).toLocaleDateString('en-PH', { dateStyle: 'long' }) : 'N/A'}</Text>
           </View>
 
           <Text style={styles.sectionHeader}>Classification Details</Text>
-          {/* Landscape Landscape Display */}
           <View style={styles.landscapeBox}>
             <Image source={classImages[item?.selectedClass]} style={styles.landscapeImage} />
             <View style={styles.landscapeInfo}>
@@ -70,11 +85,11 @@ export default function Restoration({ item, onClose }: { item: any, onClose: () 
         </ScrollView>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => updateStatus('Rejected')}>
+          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => moveDataToStatus('Rejected')}>
             <Ionicons name="close-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Reject</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => updateStatus('Approved')}>
+          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => moveDataToStatus('Approved')}>
             <Ionicons name="checkmark-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Approve</Text>
           </TouchableOpacity>
@@ -94,26 +109,13 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
   value: { fontSize: 15, fontWeight: '700', color: '#333', marginTop: 2 },
   sectionHeader: { fontSize: 14, fontWeight: '700', color: '#E91E63', marginBottom: 10 },
-  
-  // Landscape Styling
-  landscapeBox: { 
-    flexDirection: 'row', 
-    backgroundColor: '#FFF', 
-    borderWidth: 2, 
-    borderColor: '#E91E63', 
-    padding: 10, 
-    borderRadius: 20, 
-    marginBottom: 20, 
-    alignItems: 'center' 
-  },
+  landscapeBox: { flexDirection: 'row', backgroundColor: '#FFF', borderWidth: 2, borderColor: '#E91E63', padding: 10, borderRadius: 20, marginBottom: 20, alignItems: 'center' },
   landscapeImage: { width: 140, height: 90, borderRadius: 12, resizeMode: 'cover' },
   landscapeInfo: { flex: 1, marginLeft: 15 },
   classText: { fontSize: 18, fontWeight: '900', color: '#E91E63' },
-  
   imageScroll: { marginBottom: 20 },
   imageWrapper: { marginRight: 15 },
   patientImage: { width: 120, height: 120, borderRadius: 15, borderWidth: 2, borderColor: '#E91E63' },
-  
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
   btn: { flexDirection: 'row', padding: 16, borderRadius: 15, width: '47%', alignItems: 'center', justifyContent: 'center' },
   rejectBtn: { backgroundColor: '#E91E63' },

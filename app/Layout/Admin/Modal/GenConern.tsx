@@ -1,19 +1,42 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ref, update } from 'firebase/database';
+import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../../../../Firebase/FirebaseConfig';
 
 export default function GenConern({ item, onClose }: { item: any, onClose: () => void }) {
   
-  const updateStatus = async (status: string) => {
+  // Function para ilipat ang data
+  const moveDataToStatus = async (status: 'Approved' | 'Rejected') => {
     try {
-      const concernRef = ref(db, `concerns/${item.id}`);
-      await update(concernRef, { status: status });
-      Alert.alert("Success", `Concern has been ${status}.`);
-      onClose();
+      // 1. Reference sa kasalukuyang record sa "concerns"
+      const oldRef = ref(db, `concerns/${item.id}`);
+      // 2. Reference sa destinasyon (Approved o Rejected node)
+      const newRef = ref(db, `${status}/${item.id}`);
+
+      // Kunin ang data mula sa Firebase
+      const snapshot = await get(oldRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        
+        // Isulat sa bagong path na may kasamang status at processedAt timestamp
+        await set(newRef, { 
+          ...data, 
+          status: status, 
+          processedAt: new Date().toISOString() 
+        });
+        
+        // Burahin sa lumang path ("concerns")
+        await remove(oldRef);
+        
+        Alert.alert("Success", `Concern has been moved to ${status}.`);
+        onClose();
+      } else {
+        Alert.alert("Error", "Record not found.");
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to update status.");
+      console.error(error);
+      Alert.alert("Error", "Failed to move data.");
     }
   };
 
@@ -32,7 +55,9 @@ export default function GenConern({ item, onClose }: { item: any, onClose: () =>
           <Text style={styles.value}>{item?.patientName}</Text>
           
           <Text style={[styles.label, { marginTop: 15 }]}>Date Submitted</Text>
-          <Text style={styles.value}>{new Date(item?.date).toLocaleDateString('en-PH', { dateStyle: 'long' })}</Text>
+          <Text style={styles.value}>
+            {item?.date ? new Date(item.date).toLocaleDateString('en-PH', { dateStyle: 'long' }) : 'N/A'}
+          </Text>
         </View>
 
         <Text style={styles.sectionHeader}>Concern Message</Text>
@@ -40,7 +65,6 @@ export default function GenConern({ item, onClose }: { item: any, onClose: () =>
           <Text style={styles.messageText}>{item?.concern || "No message provided."}</Text>
         </View>
 
-        {/* Display Images with Title */}
         {item.images && item.images.length > 0 && (
           <>
             <Text style={styles.sectionHeader}>Actual Pictures of Teeth</Text>
@@ -55,11 +79,11 @@ export default function GenConern({ item, onClose }: { item: any, onClose: () =>
         )}
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => updateStatus('Rejected')}>
+          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => moveDataToStatus('Rejected')}>
             <Ionicons name="close-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Reject</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => updateStatus('Approved')}>
+          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => moveDataToStatus('Approved')}>
             <Ionicons name="checkmark-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Approve</Text>
           </TouchableOpacity>

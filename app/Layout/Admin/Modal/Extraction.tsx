@@ -1,18 +1,40 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ref, update } from 'firebase/database';
+import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../../../../Firebase/FirebaseConfig';
 
 export default function Extraction({ item, onClose }: { item: any, onClose: () => void }) {
   
-  const updateStatus = async (status: string) => {
+  const moveDataToStatus = async (status: 'Approved' | 'Rejected') => {
     try {
-      const concernRef = ref(db, `Tooth concern/${item.id}`);
-      await update(concernRef, { status: status });
-      Alert.alert("Success", `Extraction concern has been ${status}.`);
-      onClose();
+      // 1. Reference sa kasalukuyang data
+      const oldRef = ref(db, `Tooth concern/${item.id}`);
+      // 2. Reference sa bagong destination (Approved o Rejected node)
+      const newRef = ref(db, `${status}/${item.id}`);
+
+      // Kunin ang data mula sa Firebase
+      const snapshot = await get(oldRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        
+        // I-save sa bagong location na may kasamang status at timestamp
+        await set(newRef, { 
+          ...data, 
+          status: status, 
+          processedAt: new Date().toISOString() 
+        });
+        
+        // Burahin ang data sa lumang location (Tooth concern)
+        await remove(oldRef);
+        
+        Alert.alert("Success", `Extraction concern has been ${status}.`);
+        onClose();
+      } else {
+        Alert.alert("Error", "Record not found.");
+      }
     } catch (error) {
+      console.error(error);
       Alert.alert("Error", "Failed to update status.");
     }
   };
@@ -43,8 +65,8 @@ export default function Extraction({ item, onClose }: { item: any, onClose: () =
 
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.infoCard}>
-            <Text style={styles.label}>Patient Name</Text>
-            <Text style={styles.value}>{item?.patientName}</Text>
+            <Text style={styles.label}>Patient Email</Text>
+            <Text style={styles.value}>{item?.user}</Text>
             
             <Text style={[styles.label, { marginTop: 15 }]}>Date Submitted</Text>
             <Text style={styles.value}>
@@ -63,12 +85,7 @@ export default function Extraction({ item, onClose }: { item: any, onClose: () =
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
                 {item.imageUris.map((uri: string, index: number) => (
                   <View key={index} style={styles.imageWrapper}>
-                    {/* Siguraduhin na ang uri ay valid string */}
-                    <Image 
-                      source={{ uri: uri }} 
-                      style={styles.patientImage} 
-                      resizeMode="cover"
-                    />
+                    <Image source={{ uri: uri }} style={styles.patientImage} resizeMode="cover" />
                   </View>
                 ))}
               </ScrollView>
@@ -77,11 +94,11 @@ export default function Extraction({ item, onClose }: { item: any, onClose: () =
         </ScrollView>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => updateStatus('Rejected')}>
+          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => moveDataToStatus('Rejected')}>
             <Ionicons name="close-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Reject</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => updateStatus('Approved')}>
+          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => moveDataToStatus('Approved')}>
             <Ionicons name="checkmark-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Approve</Text>
           </TouchableOpacity>
@@ -103,18 +120,9 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 14, fontWeight: '700', color: '#E91E63', marginBottom: 10 },
   messageBox: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE', padding: 15, borderRadius: 15, marginBottom: 20 },
   teethItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  
-  // Inayos ang Image Styles
   imageScroll: { marginBottom: 20 },
   imageWrapper: { marginRight: 15 },
-  patientImage: { 
-    width: 120, 
-    height: 120, 
-    borderRadius: 15, 
-    borderWidth: 2, 
-    borderColor: '#E91E63' 
-  },
-  
+  patientImage: { width: 120, height: 120, borderRadius: 15, borderWidth: 2, borderColor: '#E91E63' },
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
   btn: { flexDirection: 'row', padding: 16, borderRadius: 15, width: '47%', alignItems: 'center', justifyContent: 'center' },
   rejectBtn: { backgroundColor: '#E91E63' },

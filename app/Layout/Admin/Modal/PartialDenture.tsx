@@ -1,25 +1,46 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ref, update } from 'firebase/database';
+import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../../../../Firebase/FirebaseConfig';
 
 export default function PartialDenture({ item, onClose }: { item: any, onClose: () => void }) {
   
-  const updateStatus = async (status: string) => {
+  // Function para ilipat ang data sa kaukulang folder
+  const moveDataToStatus = async (status: 'Approved' | 'Rejected') => {
     try {
-      const concernRef = ref(db, `Tooth concern/${item.id}`);
-      await update(concernRef, { status: status });
-      Alert.alert("Success", `Denture concern has been ${status}.`);
-      onClose();
+      // 1. Reference sa kasalukuyang record sa "Tooth concern"
+      const oldRef = ref(db, `Tooth concern/${item.id}`);
+      // 2. Reference sa destinasyon (Approved o Rejected node)
+      const newRef = ref(db, `${status}/${item.id}`);
+
+      // Kunin ang data mula sa Firebase
+      const snapshot = await get(oldRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        
+        // Isulat sa bagong path na may status at processedAt timestamp
+        await set(newRef, { 
+          ...data, 
+          status: status, 
+          processedAt: new Date().toISOString() 
+        });
+        
+        // Burahin ang data sa lumang location (Tooth concern)
+        await remove(oldRef);
+        
+        Alert.alert("Success", `Denture concern has been moved to ${status}.`);
+        onClose();
+      } else {
+        Alert.alert("Error", "Record not found.");
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to update status.");
+      console.error(error);
+      Alert.alert("Error", "Failed to move data.");
     }
   };
 
-  // Function para i-render lahat ng teeth information mula sa database
   const renderTeethInfo = () => {
-    // Kung may selectedTeeth object, i-map natin lahat ng laman nun
     if (item.selectedTeeth) {
       return Object.entries(item.selectedTeeth).map(([key, value]) => (
         <View key={key} style={styles.teethItem}>
@@ -30,7 +51,6 @@ export default function PartialDenture({ item, onClose }: { item: any, onClose: 
         </View>
       ));
     }
-    // Fallback kung yung data ay nasa root (tulad ng upperRight sa sample mo)
     if (item.upperRight) {
         return (
             <View style={styles.teethItem}>
@@ -59,7 +79,7 @@ export default function PartialDenture({ item, onClose }: { item: any, onClose: 
             
             <Text style={[styles.label, { marginTop: 15 }]}>Date Submitted</Text>
             <Text style={styles.value}>
-              {new Date(item?.timestamp).toLocaleDateString('en-PH', { dateStyle: 'long' })}
+              {item?.timestamp ? new Date(item.timestamp).toLocaleDateString('en-PH', { dateStyle: 'long' }) : 'N/A'}
             </Text>
           </View>
 
@@ -68,7 +88,6 @@ export default function PartialDenture({ item, onClose }: { item: any, onClose: 
             {renderTeethInfo()}
           </View>
 
-          {/* Display Images kung meron */}
           {item.imageUris && item.imageUris.length > 0 && (
             <>
               <Text style={styles.sectionHeader}>Uploaded Pictures</Text>
@@ -84,11 +103,11 @@ export default function PartialDenture({ item, onClose }: { item: any, onClose: 
         </ScrollView>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => updateStatus('Rejected')}>
+          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => moveDataToStatus('Rejected')}>
             <Ionicons name="close-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Reject</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => updateStatus('Approved')}>
+          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => moveDataToStatus('Approved')}>
             <Ionicons name="checkmark-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Approve</Text>
           </TouchableOpacity>

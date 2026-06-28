@@ -1,20 +1,42 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ref, update } from 'firebase/database';
+import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../../../../Firebase/FirebaseConfig';
 
 export default function Bleaching({ item, onClose }: { item: any, onClose: () => void }) {
   
-  const updateStatus = async (status: string) => {
+  // Function para ilipat ang data
+  const moveDataToStatus = async (status: 'Approved' | 'Rejected') => {
     try {
-      // Paggamit ng 'Tooth concern' path para sa Bleaching data
-      const concernRef = ref(db, `Tooth concern/${item.id}`);
-      await update(concernRef, { status: status });
-      Alert.alert("Success", `Request has been ${status}.`);
-      onClose();
+      // 1. Reference sa kasalukuyang record sa "Tooth concern"
+      const oldRef = ref(db, `Tooth concern/${item.id}`);
+      // 2. Reference sa destinasyon (Approved o Rejected node)
+      const newRef = ref(db, `${status}/${item.id}`);
+
+      // Kunin ang data mula sa Firebase
+      const snapshot = await get(oldRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        
+        // I-save sa bagong location na may kasamang status at timestamp
+        await set(newRef, { 
+          ...data, 
+          status: status, 
+          processedAt: new Date().toISOString() 
+        });
+        
+        // Burahin ang data sa lumang location (Tooth concern) para hindi na ito makita sa pending
+        await remove(oldRef);
+        
+        Alert.alert("Success", `Request has been moved to ${status}.`);
+        onClose();
+      } else {
+        Alert.alert("Error", "Record not found.");
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to update status.");
+      console.error(error);
+      Alert.alert("Error", "Failed to move data.");
     }
   };
 
@@ -28,47 +50,48 @@ export default function Bleaching({ item, onClose }: { item: any, onClose: () =>
           </TouchableOpacity>
         </View>
 
-        {/* Patient & Date Info */}
-        <View style={styles.infoCard}>
-          <Text style={styles.label}>Patient Name</Text>
-          <Text style={styles.value}>{item?.patientName || 'Unknown'}</Text>
-          
-          <Text style={[styles.label, { marginTop: 15 }]}>Date Requested</Text>
-          <Text style={styles.value}>{new Date(item?.timestamp).toLocaleDateString('en-PH', { dateStyle: 'long' })}</Text>
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.infoCard}>
+            <Text style={styles.label}>Patient Name</Text>
+            <Text style={styles.value}>{item?.patientName || 'Unknown'}</Text>
+            
+            <Text style={[styles.label, { marginTop: 15 }]}>Date Requested</Text>
+            <Text style={styles.value}>
+              {item?.timestamp ? new Date(item.timestamp).toLocaleDateString('en-PH', { dateStyle: 'long' }) : 'N/A'}
+            </Text>
+          </View>
 
-        {/* Selected Teeth Info */}
-        {item.selectedTeeth && (
-          <>
-            <Text style={styles.sectionHeader}>Selected Teeth</Text>
-            <View style={styles.teethBox}>
-              <Text style={styles.teethText}>Upper: {item.selectedTeeth.upperLeft} / {item.selectedTeeth.upperRight}</Text>
-              <Text style={styles.teethText}>Lower: {item.selectedTeeth.lowerLeft} / {item.selectedTeeth.lowerRight}</Text>
-            </View>
-          </>
-        )}
+          {item.selectedTeeth && (
+            <>
+              <Text style={styles.sectionHeader}>Selected Teeth</Text>
+              <View style={styles.teethBox}>
+                <Text style={styles.teethText}>Upper: {item.selectedTeeth.upperLeft} / {item.selectedTeeth.upperRight}</Text>
+                <Text style={styles.teethText}>Lower: {item.selectedTeeth.lowerLeft} / {item.selectedTeeth.lowerRight}</Text>
+              </View>
+            </>
+          )}
 
-        {/* Reference Images */}
-        {item.imageUris && item.imageUris.length > 0 && (
-          <>
-            <Text style={styles.sectionHeader}>Actual Pictures of Teeth</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-              {item.imageUris.map((uri: string, index: number) => (
-                <View key={index} style={styles.imageWrapper}>
-                  <Image source={{ uri }} style={styles.image} />
-                </View>
-              ))}
-            </ScrollView>
-          </>
-        )}
+          {item.imageUris && item.imageUris.length > 0 && (
+            <>
+              <Text style={styles.sectionHeader}>Actual Pictures of Teeth</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+                {item.imageUris.map((uri: string, index: number) => (
+                  <View key={index} style={styles.imageWrapper}>
+                    <Image source={{ uri }} style={styles.image} />
+                  </View>
+                ))}
+              </ScrollView>
+            </>
+          )}
+        </ScrollView>
 
-        {/* Action Buttons */}
+        {/* Buttons para sa paglilipat ng data */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => updateStatus('Rejected')}>
+          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => moveDataToStatus('Rejected')}>
             <Ionicons name="close-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Reject</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => updateStatus('Approved')}>
+          <TouchableOpacity style={[styles.btn, styles.approveBtn]} onPress={() => moveDataToStatus('Approved')}>
             <Ionicons name="checkmark-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Approve</Text>
           </TouchableOpacity>

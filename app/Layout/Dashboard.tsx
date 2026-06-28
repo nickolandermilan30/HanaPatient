@@ -93,11 +93,20 @@ export default function Dashboard() {
             <Ionicons name="log-out" size={22} color="#D32F2F" />
           </TouchableOpacity>
         </View>
- 
+
         <View style={styles.logoCircle}>
           <Image source={require('../../Image/Logo.png')} style={styles.logo} />
         </View>
         <Text style={styles.headerTitle}>Dental Services</Text>
+
+        {/* BAGO: Applied Service Button */}
+        <TouchableOpacity 
+          style={styles.appliedBtn} 
+          onPress={() => router.push('/Layout/ServiceApply')}
+        >
+          <Ionicons name="document-text" size={18} color="#4A148C" />
+          <Text style={styles.appliedBtnText}> Applied Services</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -119,7 +128,7 @@ export default function Dashboard() {
         <Text style={styles.otherButtonText}> Other Concern</Text>
       </TouchableOpacity>
 
-      {/* Logout Modal */}
+      {/* Modals remain the same... */}
       <Modal animationType="fade" transparent={true} visible={logoutModalVisible}>
         <View style={styles.centeredModal}>
           <View style={styles.logoutBox}>
@@ -137,18 +146,15 @@ export default function Dashboard() {
         </View>
       </Modal>
 
-      {/* Concern Modal */}
       <Modal animationType="slide" transparent={true} visible={modalVisible}>
         <View style={styles.modalView}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Other Concern</Text>
             <TextInput style={styles.input} placeholder="Detail your concern..." multiline value={concernText} onChangeText={setConcernText} />
-            
             <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
               <Ionicons name="camera" size={20} color="#FFF" />
               <Text style={styles.uploadButtonText}> Attach Photos</Text>
             </TouchableOpacity>
-
             <ScrollView horizontal style={styles.imageScroll}>
               {images.map((uri, i) => (
                 <TouchableOpacity key={i} onPress={() => removeImage(uri)}>
@@ -157,7 +163,6 @@ export default function Dashboard() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            
             <View style={styles.actionButtons}>
               <TouchableOpacity style={[styles.btn, styles.cancelBtn]} onPress={() => setModalVisible(false)}>
                 <Text style={{fontWeight: 'bold', color: '#555'}}>Cancel</Text>
@@ -175,12 +180,15 @@ export default function Dashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FE' },
-  header: { paddingHorizontal: 25, paddingTop: 50, paddingBottom: 30, backgroundColor: '#E1BEE7', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, alignItems: 'center',  },
+  header: { paddingHorizontal: 25, paddingTop: 50, paddingBottom: 30, backgroundColor: '#E1BEE7', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, alignItems: 'center' },
   actionBox: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 10 },
   iconCircle: { width: 45, height: 45, borderRadius: 25, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
   logoCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   logo: { width: 60, height: 60 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginBottom: 10 },
+  // BAGO: Estilo ng Applied Service Button
+  appliedBtn: { flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, alignItems: 'center' },
+  appliedBtnText: { color: '#4A148C', fontWeight: 'bold', marginLeft: 5 },
   grid: { padding: 10 },
   card: { width: '30%', backgroundColor: '#FFF', margin: 5, borderRadius: 15, alignItems: 'center', padding: 10, elevation: 3 },
   icon: { width: 40, height: 40, marginBottom: 5 },
