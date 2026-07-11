@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, Modal, TextInput, Alert, ScrollView, ActivityIndicator, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, Modal, TextInput, Alert, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,7 @@ const services = [
 export default function Dashboard() {
   const [modalVisible, setModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [concernText, setConcernText] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,10 +70,11 @@ export default function Dashboard() {
       }));
       const newConcernRef = push(dbRef(db, 'concerns'));
       await set(newConcernRef, { email: userEmail, concern: concernText, images: imageUrls, date: new Date().toISOString() });
-      Alert.alert("Success", "Concern submitted!");
+      
       setModalVisible(false);
       setConcernText('');
       setImages([]);
+      setSuccessModalVisible(true); // Open success modal
     } catch (error: any) {
       Alert.alert("Error", error.message);
     } finally {
@@ -99,11 +101,7 @@ export default function Dashboard() {
         </View>
         <Text style={styles.headerTitle}>Dental Services</Text>
 
-        {/* BAGO: Applied Service Button */}
-        <TouchableOpacity 
-          style={styles.appliedBtn} 
-          onPress={() => router.push('/Layout/ServiceApply')}
-        >
+        <TouchableOpacity style={styles.appliedBtn} onPress={() => router.push('/Layout/ServiceApply')}>
           <Ionicons name="document-text" size={18} color="#4A148C" />
           <Text style={styles.appliedBtnText}> Applied Services</Text>
         </TouchableOpacity>
@@ -128,7 +126,21 @@ export default function Dashboard() {
         <Text style={styles.otherButtonText}> Other Concern</Text>
       </TouchableOpacity>
 
-      {/* Modals remain the same... */}
+      {/* SUCCESS MODAL */}
+      <Modal animationType="fade" transparent={true} visible={successModalVisible}>
+        <View style={styles.centeredModal}>
+          <View style={styles.successBox}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.successTitle}>Submitted!</Text>
+            <Text style={styles.successSub}>Your concern has been sent to our team.</Text>
+            <TouchableOpacity style={styles.doneBtn} onPress={() => setSuccessModalVisible(false)}>
+              <Text style={styles.doneBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* LOGOUT MODAL */}
       <Modal animationType="fade" transparent={true} visible={logoutModalVisible}>
         <View style={styles.centeredModal}>
           <View style={styles.logoutBox}>
@@ -146,6 +158,7 @@ export default function Dashboard() {
         </View>
       </Modal>
 
+      {/* CONCERN MODAL */}
       <Modal animationType="slide" transparent={true} visible={modalVisible}>
         <View style={styles.modalView}>
           <View style={styles.modalContent}>
@@ -186,7 +199,6 @@ const styles = StyleSheet.create({
   logoCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   logo: { width: 60, height: 60 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginBottom: 10 },
-  // BAGO: Estilo ng Applied Service Button
   appliedBtn: { flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, alignItems: 'center' },
   appliedBtnText: { color: '#4A148C', fontWeight: 'bold', marginLeft: 5 },
   grid: { padding: 10 },
@@ -197,6 +209,13 @@ const styles = StyleSheet.create({
   otherButton: { flexDirection: 'row', backgroundColor: '#E1BEE7', padding: 18, margin: 20, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
   otherButtonText: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
   centeredModal: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+  // Success Modal Styles
+  successBox: { width: '85%', backgroundColor: '#FFF', padding: 30, borderRadius: 30, alignItems: 'center', elevation: 5 },
+  successTitle: { fontSize: 24, fontWeight: 'bold', color: '#4A148C', marginTop: 15 },
+  successSub: { color: '#666', textAlign: 'center', marginVertical: 10 },
+  doneBtn: { backgroundColor: '#4A148C', paddingVertical: 12, paddingHorizontal: 40, borderRadius: 15, marginTop: 15 },
+  doneBtnText: { color: '#FFF', fontWeight: 'bold' },
+  // Logout/Standard Modal Styles
   logoutBox: { width: '85%', backgroundColor: '#FFF', padding: 30, borderRadius: 30, alignItems: 'center' },
   logoutTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C' },
   logoutText: { marginVertical: 15 },
@@ -212,4 +231,4 @@ const styles = StyleSheet.create({
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   btn: { padding: 15, borderRadius: 15, width: '48%', alignItems: 'center' },
   cancelBtn: { backgroundColor: '#F0F0F0' }
-});
+}); 

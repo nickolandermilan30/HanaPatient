@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'; // Import para sa Storage
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -13,6 +13,7 @@ export default function TRA() {
   const [loading, setLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
 
   const classes = [
     { id: 'Class I', img: require('../../../assets/Oral/class1.png') },
@@ -51,12 +52,10 @@ export default function TRA() {
     setLoading(true);
     try {
       const storage = getStorage();
-      
-      // 1. I-upload ang bawat image sa Storage para makuha ang Public URL
       const uploadedUrls = await Promise.all(
         selectedImages.map(async (uri) => {
           const response = await fetch(uri);
-          const blob = await response.blob(); // Ito ang nagpapatakbo sa Web at Mobile
+          const blob = await response.blob();
           const filename = `restorations/${Date.now()}_${Math.random()}.jpg`;
           const imageRef = storageRef(storage, filename);
           await uploadBytes(imageRef, blob);
@@ -64,7 +63,6 @@ export default function TRA() {
         })
       );
 
-      // 2. I-save ang data sa Realtime Database
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
@@ -72,17 +70,16 @@ export default function TRA() {
         user: userEmail,
         type: "Tooth Restoration",
         selectedClass: selectedClass,
-        imageUris: uploadedUrls, // Dito na papasok ang public URL na nababasa sa kahit anong device
+        imageUris: uploadedUrls,
         timestamp: new Date().toISOString()
       });
 
-      Alert.alert("Success", "Restoration Request Submitted!");
-      router.back();
+      setLoading(false);
+      setSuccessModalVisible(true);
     } catch (error) {
       console.error("Upload error:", error);
-      Alert.alert("Error", "Failed to submit request. Please try again.");
-    } finally {
       setLoading(false);
+      Alert.alert("Error", "Failed to submit request. Please try again.");
     }
   };
 
@@ -140,12 +137,28 @@ export default function TRA() {
           {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitButtonText}>Submit Request</Text>}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* SUCCESS MODAL */}
+      <Modal visible={successModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center' }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.successTitle}>Request Submitted!</Text>
+            <Text style={styles.successSub}>Your restoration request has been sent successfully.</Text>
+            <TouchableOpacity 
+              style={[styles.closeButton, { width: '100%', marginTop: 20 }]} 
+              onPress={() => { setSuccessModalVisible(false); router.back(); }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // (Panatilihin ang iyong existing styles)
   container: { flex: 1, backgroundColor: '#F8F4FF' },
   topHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, padding: 20 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A148C' },
@@ -160,13 +173,18 @@ const styles = StyleSheet.create({
   selectedCard: { borderColor: '#4A148C', borderWidth: 2 },
   classImage: { width: 100, height: 100, resizeMode: 'contain' },
   classLabel: { marginTop: 5, fontWeight: 'bold', color: '#4A148C' },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20 },
+  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20, elevation: 3 },
   sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#4A148C', marginBottom: 10 },
-  uploadBox: { height: 80, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
+  uploadBox: { height: 90, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
   uploadText: { marginTop: 5, color: '#4A148C', fontWeight: '600' },
   previewContainer: { position: 'relative', marginRight: 10, marginTop: 10 },
   previewImage: { width: 80, height: 80, borderRadius: 10 },
   removeBtn: { position: 'absolute', top: 5, right: 0, backgroundColor: '#FFF', borderRadius: 10 },
-  submitButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 15, marginTop: 30, alignItems: 'center' },
-  submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  submitButton: { backgroundColor: '#4A148C', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center' },
+  submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 25, padding: 25 },
+  successTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', marginTop: 10 },
+  successSub: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 5 },
+  closeButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 12, alignItems: 'center' }
 });

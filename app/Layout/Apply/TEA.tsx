@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, Modal, FlatList, ActivityIndicator } from 'react-native';
-import { auth, db, storage } from '../../../Firebase/FirebaseConfig';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Modal, FlatList, ActivityIndicator } from 'react-native';
+import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-
 export default function ToothExtraction() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<string[]>([]); // Array para sa multiple images
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [successModalVisible, setSuccessModalVisible] = useState(false); // State para sa Success Modal
   
   const [selectedTeeth, setSelectedTeeth] = useState<{ [key: string]: string | null }>({
     upperRight: null,
@@ -38,7 +38,7 @@ export default function ToothExtraction() {
   const pickImages = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true, // Payagan ang multiple selection
+      allowsMultipleSelection: true,
       quality: 0.5,
     });
 
@@ -58,49 +58,47 @@ export default function ToothExtraction() {
   };
 
   const handleSubmit = async () => {
-  if (selectedImages.length === 0) {
-    Alert.alert("Error", "Please attach at least one image.");
-    return;
-  }
+    if (selectedImages.length === 0) {
+      alert("Please attach at least one image.");
+      return;
+    }
 
-  setLoading(true);
-  try {
-    // 1. I-upload ang bawat image sa storage
-    const uploadedUrls = await Promise.all(
-      selectedImages.map(async (uri) => {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const filename = `extractions/${Date.now()}_${Math.random()}.jpg`;
-        const imageRef = storageRef(getStorage(), filename);
-        await uploadBytes(imageRef, blob);
-        return await getDownloadURL(imageRef);
-      })
-    );
+    setLoading(true);
+    try {
+      const uploadedUrls = await Promise.all(
+        selectedImages.map(async (uri) => {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const filename = `extractions/${Date.now()}_${Math.random()}.jpg`;
+          const imageRef = storageRef(getStorage(), filename);
+          await uploadBytes(imageRef, blob);
+          return await getDownloadURL(imageRef);
+        })
+      );
 
-    // 2. I-save ang URL sa Realtime Database
-    const dbRef = ref(db, 'Tooth concern');
-    const newRequestRef = push(dbRef);
-    
-    await set(newRequestRef, {
-      user: userEmail,
-      type: "Tooth Extraction",
-      selectedTeeth: selectedTeeth,
-      imageUris: uploadedUrls, // Dito na papasok ang public URL
-      timestamp: new Date().toISOString()
-    });
+      const dbRef = ref(db, 'Tooth concern');
+      const newRequestRef = push(dbRef);
+      
+      await set(newRequestRef, {
+        user: userEmail,
+        type: "Tooth Extraction",
+        selectedTeeth: selectedTeeth,
+        imageUris: uploadedUrls,
+        timestamp: new Date().toISOString()
+      });
 
-    Alert.alert("Success", "Request Submitted Successfully!");
-    router.back();
-  } catch (error) {
-    console.error(error);
-    Alert.alert("Error", "Failed to upload images.");
-  } finally {
-    setLoading(false);
-  }
-};
+      setLoading(false);
+      setSuccessModalVisible(true); // I-trigger ang success modal
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+      alert("Failed to upload images.");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.topHeader}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#4A148C" />
@@ -110,11 +108,6 @@ export default function ToothExtraction() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.userContainer}>
-          <Text style={styles.userLabel}>Logged in as:</Text>
-          <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
-        </View>
-
         <Text style={styles.questionText}>Which tooth requires extraction?</Text>
 
         <View style={styles.buttonRow}>
@@ -135,7 +128,7 @@ export default function ToothExtraction() {
           <Text style={styles.sectionHeader}>Attach Images:</Text>
           <TouchableOpacity style={styles.uploadBox} onPress={pickImages}>
             <Ionicons name="camera" size={30} color="#4A148C" />
-            <Text style={styles.uploadText}>Tap to add more photos</Text>
+            <Text style={styles.uploadText}>Tap to add photos</Text>
           </TouchableOpacity>
           
           <ScrollView horizontal style={styles.imagePreviewList}>
@@ -155,7 +148,8 @@ export default function ToothExtraction() {
         </TouchableOpacity>
       </ScrollView>
 
-      <Modal visible={!!modalVisible.key} transparent animationType="slide">
+      {/* Tooth Selection Modal */}
+      <Modal visible={!!modalVisible.key} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Tooth</Text>
@@ -164,16 +158,34 @@ export default function ToothExtraction() {
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.modalItem} onPress={() => handleSelect(modalVisible.key!, item)}>
-                  <Text>{item}</Text>
+                  <Text style={{fontSize: 16}}>{item}</Text>
                 </TouchableOpacity>
               )}
             />
             <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible({ key: null })}>
-              <Text style={{ color: '#FFF' }}>Close</Text>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* SUCCESS MODAL */}
+      <Modal visible={successModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center' }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.successTitle}>Request Submitted!</Text>
+            <Text style={styles.successSub}>Your tooth extraction request has been sent successfully.</Text>
+            <TouchableOpacity 
+              style={[styles.closeButton, { width: '100%', marginTop: 20 }]} 
+              onPress={() => { setSuccessModalVisible(false); router.back(); }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -189,31 +201,30 @@ function renderButton(key: string, label: string, selectedTeeth: any, setModalVi
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F4FF' },
-  topHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50,padding: 20 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A148C' },
+  topHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, padding: 20 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#4A148C' },
   scrollContent: { padding: 20, paddingBottom: 50 },
-  userContainer: { padding: 15, backgroundColor: '#FFF', borderRadius: 15, marginBottom: 20, alignItems: 'center' },
-  userLabel: { fontSize: 12, color: '#4A148C' },
-  userEmail: { fontSize: 16, fontWeight: 'bold' },
   questionText: { fontSize: 18, fontWeight: 'bold', color: '#4A148C', textAlign: 'center', marginBottom: 20 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  button: { backgroundColor: '#E1BEE7', padding: 15, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '48%' },
+  button: { backgroundColor: '#E1BEE7', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '48%' },
   buttonText: { color: '#4A148C', fontWeight: 'bold', fontSize: 12 },
   imageContainer: { width: '100%', height: 200, marginVertical: 10 },
   anatomyImage: { width: '100%', height: '100%' },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20 },
-  sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#4A148C', marginBottom: 10 },
-  uploadBox: { height: 80, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5', marginBottom: 10 },
+  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 3 },
+  sectionHeader: { fontSize: 16, fontWeight: 'bold', color: '#4A148C', marginBottom: 10 },
+  uploadBox: { height: 90, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
   uploadText: { marginTop: 5, color: '#4A148C', fontWeight: '600' },
-  imagePreviewList: { flexDirection: 'row', marginTop: 10 },
+  imagePreviewList: { marginTop: 15 },
   previewContainer: { position: 'relative', marginRight: 10 },
   previewImage: { width: 80, height: 80, borderRadius: 10 },
-  removeBtn: { position: 'absolute', top: -2, right: -5, backgroundColor: '#FFF', borderRadius: 10 },
-  submitButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 15, marginTop: 30, alignItems: 'center' },
+  removeBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: '#FFF', borderRadius: 15 },
+  submitButton: { backgroundColor: '#4A148C', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center' },
   submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, maxHeight: '80%' },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center', color: '#4A148C' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 25, padding: 25, maxHeight: '80%' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center', color: '#4A148C' },
   modalItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' },
-  closeButton: { marginTop: 15, backgroundColor: '#4A148C', padding: 10, borderRadius: 10, alignItems: 'center' }
-}); 
+  closeButton: { marginTop: 15, backgroundColor: '#4A148C', padding: 15, borderRadius: 12, alignItems: 'center' },
+  successTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', marginTop: 10 },
+  successSub: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 5 }
+});

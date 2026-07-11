@@ -12,6 +12,7 @@ export default function FPDA() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
   
   const [selectedTeeth, setSelectedTeeth] = useState<{ [key: string]: string | null }>({
     upperRight: null,
@@ -40,7 +41,6 @@ export default function FPDA() {
       allowsMultipleSelection: true,
       quality: 0.5,
     });
-
     if (!result.canceled) {
       const uris = result.assets.map(asset => asset.uri);
       setSelectedImages(prev => [...prev, ...uris]);
@@ -64,19 +64,18 @@ export default function FPDA() {
 
     setLoading(true);
     try {
-      // 1. I-upload ang bawat image sa Firebase Storage
+      const storage = getStorage();
       const uploadedUrls = await Promise.all(
         selectedImages.map(async (uri) => {
           const response = await fetch(uri);
           const blob = await response.blob();
           const filename = `fixed_partial_denture/${Date.now()}_${Math.random()}.jpg`;
-          const imageRef = storageRef(getStorage(), filename);
+          const imageRef = storageRef(storage, filename);
           await uploadBytes(imageRef, blob);
-          return await getDownloadURL(imageRef); // Dito nakukuha ang public URL
+          return await getDownloadURL(imageRef);
         })
       );
 
-      // 2. I-save ang data sa Realtime Database
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
@@ -84,17 +83,16 @@ export default function FPDA() {
         user: userEmail,
         type: "Fixed Partial Denture",
         selectedTeeth: selectedTeeth,
-        imageUris: uploadedUrls, // Dito papasok ang array ng mga public URLs
+        imageUris: uploadedUrls,
         timestamp: new Date().toISOString()
       });
 
-      Alert.alert("Success", "Request Submitted Successfully!");
-      router.back();
+      setLoading(false);
+      setSuccessModalVisible(true);
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to upload images and submit request.");
-    } finally {
       setLoading(false);
+      Alert.alert("Error", "Failed to upload images and submit request.");
     }
   };
 
@@ -154,6 +152,7 @@ export default function FPDA() {
         </TouchableOpacity>
       </ScrollView>
 
+      {/* SELECTION MODAL */}
       <Modal visible={!!modalVisible.key} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -168,7 +167,24 @@ export default function FPDA() {
               )}
             />
             <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible({ key: null })}>
-              <Text style={{ color: '#FFF' }}>Close</Text>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SUCCESS MODAL */}
+      <Modal visible={successModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center' }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.successTitle}>Request Submitted!</Text>
+            <Text style={styles.successSub}>Your FPD request has been sent successfully.</Text>
+            <TouchableOpacity 
+              style={[styles.closeButton, { width: '100%', marginTop: 20 }]} 
+              onPress={() => { setSuccessModalVisible(false); router.back(); }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -196,23 +212,25 @@ const styles = StyleSheet.create({
   userEmail: { fontSize: 16, fontWeight: 'bold' },
   questionText: { fontSize: 18, fontWeight: 'bold', color: '#4A148C', textAlign: 'center', marginBottom: 20 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  button: { backgroundColor: '#E1BEE7', padding: 15, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '48%' },
+  button: { backgroundColor: '#FFF', padding: 15, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '48%', borderWidth: 1, borderColor: '#E1BEE7' },
   buttonText: { color: '#4A148C', fontWeight: 'bold', fontSize: 12 },
   imageContainer: { width: '100%', height: 200, marginVertical: 10 },
   anatomyImage: { width: '100%', height: '100%' },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20 },
+  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20, elevation: 3 },
   sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#4A148C', marginBottom: 10 },
-  uploadBox: { height: 80, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5', marginBottom: 10 },
+  uploadBox: { height: 90, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5', marginBottom: 10 },
   uploadText: { marginTop: 5, color: '#4A148C', fontWeight: '600' },
   imagePreviewList: { flexDirection: 'row', marginTop: 10 },
   previewContainer: { position: 'relative', marginRight: 10 },
   previewImage: { width: 80, height: 80, borderRadius: 10 },
   removeBtn: { position: 'absolute', top: -2, right: -5, backgroundColor: '#FFF', borderRadius: 10 },
-  submitButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 15, marginTop: 30, alignItems: 'center' },
+  submitButton: { backgroundColor: '#4A148C', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center' },
   submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, maxHeight: '80%' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 25, padding: 25, maxHeight: '80%' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center', color: '#4A148C' },
   modalItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' },
-  closeButton: { marginTop: 15, backgroundColor: '#4A148C', padding: 10, borderRadius: 10, alignItems: 'center' }
+  closeButton: { marginTop: 15, backgroundColor: '#4A148C', padding: 15, borderRadius: 12, alignItems: 'center' },
+  successTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', marginTop: 10 },
+  successSub: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 5 }
 });

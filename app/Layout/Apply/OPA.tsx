@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -13,6 +13,7 @@ export default function OPA() {
   const [loading, setLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
 
   const levels = [
     { id: 'Slight', img: require('../../../assets/Teeth/Slight.png') },
@@ -48,8 +49,6 @@ export default function OPA() {
     setLoading(true);
     try {
       const storage = getStorage();
-
-      // 1. I-upload ang bawat image sa Firebase Storage para magkaroon ng public URL
       const uploadedUrls = await Promise.all(
         selectedImages.map(async (uri) => {
           const response = await fetch(uri);
@@ -61,7 +60,6 @@ export default function OPA() {
         })
       );
 
-      // 2. I-save ang data sa Realtime Database gamit ang mga URLs
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
@@ -69,17 +67,16 @@ export default function OPA() {
         user: userEmail,
         type: "Oral Prophylaxis",
         selectedLevel: selectedLevel,
-        imageUris: uploadedUrls, // Dito papasok ang public URL na mababasa ng web at mobile
+        imageUris: uploadedUrls,
         timestamp: new Date().toISOString()
       });
 
-      Alert.alert("Success", "Request Submitted Successfully!");
-      router.back();
+      setLoading(false);
+      setSuccessModalVisible(true);
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to upload images. Please try again.");
-    } finally {
       setLoading(false);
+      Alert.alert("Error", "Failed to submit request. Please try again.");
     }
   };
 
@@ -137,6 +134,23 @@ export default function OPA() {
           {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitButtonText}>Submit Request</Text>}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* SUCCESS MODAL */}
+      <Modal visible={successModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center' }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.successTitle}>Request Submitted!</Text>
+            <Text style={styles.successSub}>Your prophylaxis request has been sent successfully.</Text>
+            <TouchableOpacity 
+              style={[styles.closeButton, { width: '100%', marginTop: 20 }]} 
+              onPress={() => { setSuccessModalVisible(false); router.back(); }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -156,13 +170,18 @@ const styles = StyleSheet.create({
   selectedCard: { borderColor: '#4A148C', borderWidth: 2 },
   classImage: { width: '100%', height: 150, resizeMode: 'cover', borderRadius: 10 },
   classLabel: { marginTop: 10, fontWeight: 'bold', color: '#4A148C', fontSize: 16 },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20 },
+  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20, elevation: 3 },
   sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#4A148C', marginBottom: 10 },
-  uploadBox: { height: 80, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
+  uploadBox: { height: 90, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
   uploadText: { marginTop: 5, color: '#4A148C', fontWeight: '600' },
   previewContainer: { position: 'relative', marginRight: 10, marginTop: 10 },
   previewImage: { width: 80, height: 80, borderRadius: 10 },
   removeBtn: { position: 'absolute', top: 5, right: 0, backgroundColor: '#FFF', borderRadius: 10 },
-  submitButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 15, marginTop: 30, alignItems: 'center' },
-  submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  submitButton: { backgroundColor: '#4A148C', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center' },
+  submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 25, padding: 25 },
+  successTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', marginTop: 10 },
+  successSub: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 5 },
+  closeButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 12, alignItems: 'center' }
 });

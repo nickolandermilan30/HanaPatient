@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, TextInput, Modal } from 'react-native';
 import { auth, db } from '../../../Firebase/FirebaseConfig';
 import { ref, push, set } from 'firebase/database';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -12,6 +12,7 @@ export default function CDA() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
   
   const [visiting, setVisiting] = useState<string | null>(null);
   const [phoneOwner, setPhoneOwner] = useState<string | null>(null);
@@ -49,8 +50,6 @@ export default function CDA() {
     setLoading(true);
     try {
       const storage = getStorage();
-
-      // 1. I-upload ang bawat image sa Firebase Storage para makuha ang public URL
       const uploadedUrls = await Promise.all(
         selectedImages.map(async (uri) => {
           const response = await fetch(uri);
@@ -62,7 +61,6 @@ export default function CDA() {
         })
       );
 
-      // 2. I-save ang data sa Realtime Database
       const dbRef = ref(db, 'Tooth concern');
       const newRequestRef = push(dbRef);
       
@@ -73,17 +71,16 @@ export default function CDA() {
         phoneOwner: phoneOwner,
         relativeFbName: fbName,
         selectedDentureType: selectedSample,
-        imageUris: uploadedUrls, // Dito na papasok ang public URLs
+        imageUris: uploadedUrls,
         timestamp: new Date().toISOString()
       });
 
-      Alert.alert("Success", "Application Submitted!");
-      router.back();
+      setLoading(false);
+      setSuccessModalVisible(true);
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to submit application. Please check your internet connection.");
-    } finally {
       setLoading(false);
+      Alert.alert("Error", "Failed to submit application. Please check your internet connection.");
     }
   };
 
@@ -159,6 +156,23 @@ export default function CDA() {
           {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitButtonText}>Complete Application</Text>}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* SUCCESS MODAL */}
+      <Modal visible={successModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center' }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.successTitle}>Application Submitted!</Text>
+            <Text style={styles.successSub}>Your denture application has been sent successfully.</Text>
+            <TouchableOpacity 
+              style={[styles.closeButton, { width: '100%', marginTop: 20 }]} 
+              onPress={() => { setSuccessModalVisible(false); router.back(); }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -177,19 +191,24 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: '#4A148C', borderColor: '#4A148C' },
   choiceText: { color: '#4A148C', fontWeight: 'bold' },
   input: { backgroundColor: '#FFF', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#E1BEE7', marginBottom: 15 },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 10 },
+  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 10, elevation: 3 },
   sectionHeader: { fontSize: 16, fontWeight: 'bold', color: '#4A148C', marginBottom: 10 },
   sampleContainer: { flexDirection: 'row', justifyContent: 'space-around' },
   sampleTouch: { alignItems: 'center', padding: 5, borderRadius: 10 },
   selectedSample: { borderWidth: 2, borderColor: '#4A148C' },
   sampleImg: { width: 120, height: 80, borderRadius: 10 },
   labelSmall: { marginTop: 5, fontSize: 12, fontWeight: '600' },
-  uploadBox: { height: 80, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
+  uploadBox: { height: 90, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
   uploadText: { marginTop: 5, color: '#4A148C', fontWeight: '600' },
   imagePreviewList: { marginTop: 15 },
   previewContainer: { position: 'relative', marginRight: 10 },
   previewImage: { width: 80, height: 80, borderRadius: 10 },
   removeBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: '#FFF', borderRadius: 10 },
-  submitButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 15, marginTop: 30, alignItems: 'center' },
-  submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  submitButton: { backgroundColor: '#4A148C', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center' },
+  submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 25, padding: 25 },
+  successTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', marginTop: 10 },
+  successSub: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 5 },
+  closeButton: { backgroundColor: '#4A148C', padding: 15, borderRadius: 12, alignItems: 'center' }
 });
