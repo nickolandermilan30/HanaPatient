@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { auth } from '../../../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function OP() {
   const router = useRouter();
+  const { language } = useLocalSearchParams();
+  const isTagalog = language === 'filipino';
+  
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,11 +25,11 @@ export default function OP() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#4A148C" />
         </TouchableOpacity>
-              <TouchableOpacity 
+        <TouchableOpacity 
           style={styles.topApplyButton} 
-          onPress={() => router.push('/Layout/Apply/OPA')}
+          onPress={() => router.push({ pathname: '/Layout/Apply/OPA', params: { language } })}
         >
-          <Text style={styles.topApplyText}>Apply</Text>
+          <Text style={styles.topApplyText}>{isTagalog ? 'Mag-apply' : 'Apply'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -35,12 +38,12 @@ export default function OP() {
           <View style={styles.imageCircle}>
             <Image source={require('../../../Image/prophylaxis.png')} style={styles.headerImage} />
           </View>
-          <Text style={styles.title}>Oral Prophylaxis</Text>
+          <Text style={styles.title}>{isTagalog ? 'Paglilinis ng Ngipin' : 'Oral Prophylaxis'}</Text>
           <Text style={styles.subTitle}>(Linis)</Text>
           
           <View style={styles.userContainer}>
-            <Text style={styles.userLabel}>Logged in as:</Text>
-            <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
+            <Text style={styles.userLabel}>{isTagalog ? 'Naka-log in bilang:' : 'Logged in as:'}</Text>
+            <Text style={styles.userEmail}>{userEmail || (isTagalog ? 'Walang naka-log in na user' : 'No user logged in')}</Text>
           </View>
         </View>
 
@@ -53,23 +56,21 @@ export default function OP() {
 
         {/* Indication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Indication:</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Indikasyon:' : 'Indication:'}</Text>
           <Text style={styles.text}>
-            Oral prophylaxis is recommended for people who have plaque, tartar, or stains on their teeth. 
-            It is also helpful for those with swollen gums or bad breath. Regular oral prophylaxis 
-            helps keep the teeth and gums clean and healthy and prevents dental problems such as 
-            cavities and gum disease.
+            {isTagalog 
+              ? 'Ang oral prophylaxis ay inirerekomenda para sa mga taong may plaque, tartar, o mantsa sa kanilang mga ngipin. Nakatutulong din ito sa mga may namamaga na gilagid o mabahong hininga. Ang regular na oral prophylaxis ay tumutulong na mapanatiling malinis at malusog ang mga ngipin at gilagid, at nag-iwas sa mga problema tulad ng pagkabulok ng ngipin at sakit sa gilagid.'
+              : 'Oral prophylaxis is recommended for people who have plaque, tartar, or stains on their teeth. It is also helpful for those with swollen gums or bad breath. Regular oral prophylaxis helps keep the teeth and gums clean and healthy and prevents dental problems such as cavities and gum disease.'}
           </Text>
         </View>
         
         {/* Contraindication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Contraindication:</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Kontraindikasyon:' : 'Contraindication:'}</Text>
           <Text style={styles.text}>
-            Oral prophylaxis may be postponed in patients with certain medical conditions, such as 
-            uncontrolled heart disease, severe respiratory infections, or acute oral infections, 
-            until their condition is properly managed. It may also be delayed in patients who 
-            require special medical clearance or preventive measures before undergoing dental treatment.
+            {isTagalog 
+              ? 'Maaaring ipagpaliban ang oral prophylaxis sa mga pasyenteng may ilang kondisyong medikal, tulad ng hindi kontroladong sakit sa puso, malalang impeksyon sa paghinga, o matinding impeksyon sa bibig, hanggang sa maayos na mamahala ang kanilang kondisyon. Maaari rin itong i-delay sa mga pasyenteng nangangailangan ng espesyal na clearance sa medisina bago sumailalim sa pagpapagamot sa ngipin.'
+              : 'Oral prophylaxis may be postponed in patients with certain medical conditions, such as uncontrolled heart disease, severe respiratory infections, or acute oral infections, until their condition is properly managed. It may also be delayed in patients who require special medical clearance or preventive measures before undergoing dental treatment.'}
           </Text>
         </View>
       </ScrollView>
@@ -92,7 +93,6 @@ const styles = StyleSheet.create({
   userContainer: { width: '100%', padding: 15, backgroundColor: '#FFF', borderRadius: 15, alignItems: 'center', borderWidth: 1, borderColor: '#E1BEE7' },
   userLabel: { fontSize: 12, color: '#4A148C', fontWeight: '600' },
   userEmail: { fontSize: 16, fontWeight: 'bold', color: '#000' },
-  // Bagong styles para sa teeth images
   teethImagesContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   teethImage: { width: '32%', height: 80, borderRadius: 10 },
   card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginBottom: 15, elevation: 3 },

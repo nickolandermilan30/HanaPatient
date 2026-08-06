@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { auth } from '../../../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function FA() {
   const router = useRouter();
+  const { language } = useLocalSearchParams(); // Kuhanin ang language parameter mula sa Dashboard
+  const isTagalog = language === 'filipino';
+
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,11 +25,11 @@ export default function FA() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#4A148C" />
         </TouchableOpacity>
-              <TouchableOpacity 
+        <TouchableOpacity 
           style={styles.topApplyButton} 
-          onPress={() => router.push('/Layout/Apply/FAA')}
+          onPress={() => router.push({ pathname: '/Layout/Apply/FAA', params: { language } })}
         >
-          <Text style={styles.topApplyText}>Apply</Text>
+          <Text style={styles.topApplyText}>{isTagalog ? 'Mag-apply' : 'Apply'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -35,12 +38,12 @@ export default function FA() {
           <View style={styles.imageCircle}>
             <Image source={require('../../../Image/fluoride.png')} style={styles.headerImage} />
           </View>
-          <Text style={styles.title}>Fluoride Application</Text>
+          <Text style={styles.title}>{isTagalog ? 'Aplikasyon ng Fluoride' : 'Fluoride Application'}</Text>
           <Text style={styles.subTitle}>(Proteksyon sa ngipin)</Text>
           
           <View style={styles.userContainer}>
-            <Text style={styles.userLabel}>Logged in as:</Text>
-            <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
+            <Text style={styles.userLabel}>{isTagalog ? 'Naka-log in bilang:' : 'Logged in as:'}</Text>
+            <Text style={styles.userEmail}>{userEmail || (isTagalog ? 'Walang naka-log in na user' : 'No user logged in')}</Text>
           </View>
         </View>
 
@@ -51,21 +54,21 @@ export default function FA() {
 
         {/* Indication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Indication:</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Indikasyon:' : 'Indication:'}</Text>
           <Text style={styles.text}>
-            Fluoride Application is indicated primarily for individuals of all ages with moderate to high risk of dental caries, 
-            including those with a history of cavities, visible white spot lesions, poor oral hygiene habits, frequent sugar consumption, 
-            dry mouth conditions, orthodontic treatment like braces. It is also used to reduce tooth sensitivity and arrest early stages of tooth decay.
+            {isTagalog 
+              ? 'Ang Fluoride Application ay pangunahing inirerekomenda para sa mga indibidwal sa lahat ng edad na may katamtaman hanggang mataas na panganib sa pagkabulok ng ngipin, kabilang ang mga may kasaysayan ng mga butas, nakikitang puting mantsa, mahinang ugali sa paglilinis ng ngipin, madalas na pagkain ng matatamis, tuyong bibig, at mga sumasailalim sa orthodontic treatment tulad ng braces. Ginagamit din ito upang bawasan ang pagiging sensitibo ng ngipin at pigilan ang maagang yugto ng pagkabulok nito.'
+              : 'Fluoride Application is indicated primarily for individuals of all ages with moderate to high risk of dental caries, including those with a history of cavities, visible white spot lesions, poor oral hygiene habits, frequent sugar consumption, dry mouth conditions, orthodontic treatment like braces. It is also used to reduce tooth sensitivity and arrest early stages of tooth decay.'}
           </Text>
         </View>
         
         {/* Contraindication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Contraindication:</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Kontraindikasyon:' : 'Contraindication:'}</Text>
           <Text style={styles.text}>
-            Fluoride Application is strictly contraindicated for individuals with a known hypersensitivity or allergy to fluoride or any of the varnish/gel components. 
-            Topical applications should be avoided or heavily modified for children under the age of six who cannot properly control their swallowing reflex, 
-            as accidental ingestion can lead to acute toxicity or dental fluorosis.
+            {isTagalog 
+              ? 'Ang Fluoride Application ay mahigpit na ipinagbabawal sa mga indibidwal na may kilalang allergy o sobrang sensitibo sa fluoride o sa alinman sa mga sangkap ng varnish/gel. Dapat iwasan o lubusang baguhin ang paglalagay nito para sa mga batang wala pang anim na taong gulang na hindi pa maayos na makontrol ang kanilang paglunok, dahil ang aksidenteng paglunok nito ay maaaring magdulot ng malubhang toxicity o dental fluorosis.'
+              : 'Fluoride Application is strictly contraindicated for individuals with a known hypersensitivity or allergy to fluoride or any of the varnish/gel components. Topical applications should be avoided or heavily modified for children under the age of six who cannot properly control their swallowing reflex, as accidental ingestion can lead to acute toxicity or dental fluorosis.'}
           </Text>
         </View>
       </ScrollView>

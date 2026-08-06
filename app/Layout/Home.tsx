@@ -14,6 +14,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(true); // Modal active by default
+  const [language, setLanguage] = useState<'english' | 'filipino'>('english'); // Language state
 
   // 1. Back Button (Logout) Logic
   useEffect(() => {
@@ -65,19 +66,56 @@ export default function Home() {
       <Modal transparent={true} visible={infoModalVisible} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.card}>
+            {/* Language Switcher Tabs */}
+            <View style={styles.tabContainer}>
+              <TouchableOpacity 
+                style={[styles.tabButton, language === 'english' && styles.activeTab]} 
+                onPress={() => setLanguage('english')}
+              >
+                <Text style={[styles.tabText, language === 'english' && styles.activeTabText]}>English</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.tabButton, language === 'filipino' && styles.activeTab]} 
+                onPress={() => setLanguage('filipino')}
+              >
+                <Text style={[styles.tabText, language === 'filipino' && styles.activeTabText]}>Filipino</Text>
+              </TouchableOpacity>
+            </View>
+
             <ScrollView showsVerticalScrollIndicator={false}>
               <Image source={require('../../Image/Logo.png')} style={styles.logoModal} resizeMode="contain" />
-              <Text style={styles.title}>What is HanaPatient?</Text>
-              <Text style={styles.description}>
-                HanaPatient is a patient contact management application developed to assist dental clinicians 
-                in efficiently finding and managing patients according to specific clinical case requirements. 
-                {'\n\n'}
-                The application serves as a centralized platform where patient information can be organized, 
-                stored, and accessed conveniently, reducing the time and effort required in manual patient searching.
-              </Text>
+              
+              {language === 'english' ? (
+                <>
+                  <Text style={styles.title}>What is HanaPatient?</Text>
+                  <Text style={styles.description}>
+                    <Text style={styles.boldItalicPurple}>HanaPatient</Text> is an application designed for the Dental Clinicians of Ago Medical and Educational Center (AMEC).
+                    {'\n\n'}
+                    The term <Text style={styles.italicText}>"Hanap,"</Text> a Filipino word meaning <Text style={styles.italicText}>"to search for,"</Text> combined with the word <Text style={styles.italicText}>"Patient,"</Text> reflects the application's primary goal and function: to help AMEC Dental Clinicians search for potential patients based on specific clinical case requirements.
+                    {'\n\n'}
+                    By streamlining patient identification and organizing medical and dental information, <Text style={styles.boldItalicPurple}>HanaPatient</Text> helps reduce the burden on clinicians, improve workflow efficiency, and support the timely completion of clinical requirements.
+                    {'\n\n'}
+                    Ultimately, the application aims to enhance patient management practices and contribute to a more organized and productive clinical learning environment.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.title}>Ano ang HanaPatient?</Text>
+                  <Text style={styles.description}>
+                    Ang <Text style={styles.boldItalicPurple}>HanaPatient</Text> ay isang aplikasyon na idinisenyo para sa mga Dental Clinician ng Ago Medical and Educational Center (AMEC).
+                    {'\n\n'}
+                    Ang salitang <Text style={styles.italicText}>"Hanap,"</Text> na isang salitang Filipino na nangangahulugang <Text style={styles.italicText}>"to search for,"</Text> kasama ang salitang <Text style={styles.italicText}>"Patient,"</Text> ay sumasalamin sa pangunahing layunin at tungkulin ng aplikasyon: ang tulungan ang mga AMEC Dental Clinician na maghanap ng mga potensyal na pasyente batay sa mga tiyak na pangangailangan sa klinikal na kaso.
+                    {'\n\n'}
+                    Sa pamamagitan ng pagpapadali ng pagkilala sa pasyente at pag-aayos ng impormasyong medikal at dental, nakatutulong ang <Text style={styles.boldItalicPurple}>HanaPatient</Text> na bawasan ang bigat sa mga clinician, pagbutihin ang kahusayan sa daloy ng trabaho, and suportahan ang napapanahong pagtatapos ng mga kinakailangang klinikal.
+                    {'\n\n'}
+                    Sa huli, layunin ng aplikasyon na pahusayin ang mga gawi sa pamamahala ng pasyente at mag-ambag sa isang mas organisado at produktibong kapaligiran sa pag-aaral sa klinika.
+                  </Text>
+                </>
+              )}
             </ScrollView>
+
             <TouchableOpacity style={styles.button} onPress={() => setInfoModalVisible(false)}>
-              <Text style={styles.buttonText}>Got it!</Text>
+              <Text style={styles.buttonText}>{language === 'english' ? 'Got it!' : 'Naiintindihan ko!'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -124,14 +162,28 @@ const styles = StyleSheet.create({
   nameText: { fontSize: 32, fontWeight: '800', color: '#7B1FA2', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
   continueButton: { backgroundColor: '#7B1FA2', paddingVertical: 15, paddingHorizontal: 50, borderRadius: 30, marginBottom: 20 },
   continueText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  
   // Info Modal Styles
   modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 20 },
-  card: { width: '100%', maxHeight: '85%', backgroundColor: '#FFFFFF', borderRadius: 25, padding: 30, alignItems: 'center', elevation: 5 },
-  logoModal: { width: 100, height: 100, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#4A148C', textAlign: 'center', marginBottom: 20 },
-  description: { fontSize: 16, color: '#333', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
-  button: { marginTop: 10, paddingVertical: 15 },
+  card: { width: '100%', maxHeight: '85%', backgroundColor: '#FFFFFF', borderRadius: 25, padding: 20, alignItems: 'center', elevation: 5 },
+  logoModal: { width: 90, height: 90, alignSelf: 'center', marginBottom: 15 },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', textAlign: 'center', marginBottom: 15 },
+  description: { fontSize: 15, color: '#333', textAlign: 'center', lineHeight: 22, marginBottom: 15 },
+  
+  // Language Switcher Tab Styles
+  tabContainer: { flexDirection: 'row', backgroundColor: '#EDE7F6', borderRadius: 20, padding: 4, marginBottom: 15, width: '80%', alignSelf: 'center' },
+  tabButton: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 16 },
+  activeTab: { backgroundColor: '#7B1FA2' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#7B1FA2' },
+  activeTabText: { color: '#FFF' },
+
+  // Text modifications inside description
+  boldItalicPurple: { fontWeight: 'bold', fontStyle: 'italic', color: '#7B1FA2' },
+  italicText: { fontStyle: 'italic' },
+
+  button: { marginTop: 5, paddingVertical: 10 },
   buttonText: { fontSize: 18, fontWeight: 'bold', color: '#6A1B9A' },
+
   // Logout Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: 300, backgroundColor: 'white', borderRadius: 20, padding: 20, alignItems: 'center' },

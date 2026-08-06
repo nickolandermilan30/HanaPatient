@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { auth } from '../../../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function CD() {
   const router = useRouter();
+  const { language } = useLocalSearchParams();
+  const isTagalog = language === 'filipino';
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,11 +24,11 @@ export default function CD() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#4A148C" />
         </TouchableOpacity>
-              <TouchableOpacity 
+        <TouchableOpacity 
           style={styles.topApplyButton} 
-          onPress={() => router.push('/Layout/Apply/CDA')}
+          onPress={() => router.push({ pathname: '/Layout/Apply/CDA', params: { language } })}
         >
-          <Text style={styles.topApplyText}>Apply</Text>
+          <Text style={styles.topApplyText}>{isTagalog ? 'Mag-apply' : 'Apply'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -35,12 +37,12 @@ export default function CD() {
           <View style={styles.imageCircle}>
             <Image source={require('../../../Image/complete_denture.png')} style={styles.headerImage} />
           </View>
-          <Text style={styles.title}>Complete Denture</Text>
+          <Text style={styles.title}>{isTagalog ? 'Kumpletong Pustiso' : 'Complete Denture'}</Text>
           <Text style={styles.subTitle}>(Pustiso sa lahat ng ngipin)</Text>
           
           <View style={styles.userContainer}>
-            <Text style={styles.userLabel}>Logged in as:</Text>
-            <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
+            <Text style={styles.userLabel}>{isTagalog ? 'Naka-log in bilang:' : 'Logged in as:'}</Text>
+            <Text style={styles.userEmail}>{userEmail || (isTagalog ? 'Walang naka-log in na user' : 'No user logged in')}</Text>
           </View>
         </View>
 
@@ -52,21 +54,30 @@ export default function CD() {
 
         {/* Indication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Indication:</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Indikasyon:' : 'Indication:'}</Text>
           <Text style={styles.text}>
-            Complete dentures are indicated for <Text style={styles.boldText}>patients who have lost all natural teeth </Text> 
-            in the upper arch and lower arch. They help restore chewing, speech, facial appearance, and overall oral function.
+            {isTagalog ? 'Ang kumpletong pustiso ay para sa ' : 'Complete dentures are indicated for '}
+            <Text style={styles.boldText}>
+              {isTagalog ? 'mga pasyenteng nawalan ng lahat ng natural na ngipin ' : 'patients who have lost all natural teeth '}
+            </Text> 
+            {isTagalog 
+              ? 'sa itaas at ibabang panga. Tumutulong ito na maibalik ang pagnguya, pagsasalita, itsura ng mukha, at pangkalahatang kalusugan ng bibig.' 
+              : 'in the upper arch and lower arch. They help restore chewing, speech, facial appearance, and overall oral function.'}
           </Text>
         </View>
         
         {/* Contraindication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Contraindication:</Text>
-          <Text style={styles.text}>Complete dentures may not be suitable for patients with:</Text>
-          <Text style={styles.text}>• Severe ridge resorption</Text>
-          <Text style={styles.text}>• Uncontrolled systemic diseases</Text>
-          <Text style={styles.text}>• Untreated oral infections</Text>
-          <Text style={styles.text}>• Conditions that affect proper denture retention and stability</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Kontraindikasyon:' : 'Contraindication:'}</Text>
+          <Text style={styles.text}>
+            {isTagalog 
+              ? 'Maaaring hindi angkop ang kumpletong pustiso sa mga pasyenteng may:' 
+              : 'Complete dentures may not be suitable for patients with:'}
+          </Text>
+          <Text style={styles.text}>• {isTagalog ? 'Matinding pagkaubos ng buto sa gilagid (ridge resorption)' : 'Severe ridge resorption'}</Text>
+          <Text style={styles.text}>• {isTagalog ? 'Mga sakit sa katawan na hindi nakokontrol' : 'Uncontrolled systemic diseases'}</Text>
+          <Text style={styles.text}>• {isTagalog ? 'Hindi nagamot na impeksyon sa bibig' : 'Untreated oral infections'}</Text>
+          <Text style={styles.text}>• {isTagalog ? 'Mga kondisyon na nakakaapekto sa pagkapit at katatagan ng pustiso' : 'Conditions that affect proper denture retention and stability'}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -88,7 +99,6 @@ const styles = StyleSheet.create({
   userContainer: { width: '100%', padding: 15, backgroundColor: '#FFF', borderRadius: 15, alignItems: 'center', borderWidth: 1, borderColor: '#E1BEE7' },
   userLabel: { fontSize: 12, color: '#4A148C', fontWeight: '600' },
   userEmail: { fontSize: 16, fontWeight: 'bold', color: '#000' },
-  // Styles para sa A at B images
   dentureImagesContainer: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 15 },
   dentureImage: { width: '48%', height: 120, borderRadius: 10 },
   card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginBottom: 15, elevation: 3 },

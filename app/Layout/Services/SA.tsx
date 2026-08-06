@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { auth } from '../../../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function SA() {
   const router = useRouter();
+  const { language } = useLocalSearchParams(); // Kukunin ang language mula sa Dashboard
+  const isTagalog = language === 'filipino';
+  
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,12 +25,12 @@ export default function SA() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#4A148C" />
         </TouchableOpacity>
-          <TouchableOpacity 
-         style={styles.topApplyButton} 
-         onPress={() => router.push('/Layout/Apply/SAA')}
-       >
-         <Text style={styles.topApplyText}>Apply</Text>
-       </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.topApplyButton} 
+          onPress={() => router.push({ pathname: '/Layout/Apply/SAA', params: { language } })}
+        >
+          <Text style={styles.topApplyText}>{isTagalog ? 'Mag-apply' : 'Apply'}</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -35,12 +38,16 @@ export default function SA() {
           <View style={styles.imageCircle}>
             <Image source={require('../../../Image/sealant.png')} style={styles.headerImage} />
           </View>
-          <Text style={styles.title}>Tooth Sealants</Text>
+          <Text style={styles.title}>
+            {isTagalog ? 'Dental Sealants' : 'Tooth Sealants'}
+          </Text>
           <Text style={styles.subTitle}>(Proteksyon sa hukay ng ngipin)</Text>
           
           <View style={styles.userContainer}>
-            <Text style={styles.userLabel}>Logged in as:</Text>
-            <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
+            <Text style={styles.userLabel}>
+              {isTagalog ? 'Naka-log in bilang:' : 'Logged in as:'}
+            </Text>
+            <Text style={styles.userEmail}>{userEmail || (isTagalog ? 'Walang user na naka-log in' : 'No user logged in')}</Text>
           </View>
         </View>
 
@@ -51,19 +58,27 @@ export default function SA() {
 
         {/* Indication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Indication:</Text>
+          <Text style={styles.sectionHeader}>
+            {isTagalog ? 'Indikasyon (Indication):' : 'Indication:'}
+          </Text>
           <Text style={styles.text}>
-            Tooth sealants are indicated for children, adolescents, and adults who are at risk of developing cavities, especially on the chewing surfaces of the back teeth. 
-            They are recommended for teeth with deep pits and grooves where food and bacteria can easily accumulate, helping to prevent tooth decay and maintain good oral health.
+            {isTagalog 
+              ? 'Ang tooth sealants ay para sa mga bata, tinedyer, at matatanda na may panganib na magka-kisi/kuto sa ngipin, lalo na sa mga panguyaang bahagi ng likod ng ngipin. Inirerekomenda ito sa mga ngiping malalim ang hukay at uka kung saan madaling mamęsi ang pagkain at bakterya upang maiwasan ang pagkabulok at mapanatili ang kalusugan ng bibig.'
+              : 'Tooth sealants are indicated for children, adolescents, and adults who are at risk of developing cavities, especially on the chewing surfaces of the back teeth. They are recommended for teeth with deep pits and grooves where food and bacteria can easily accumulate, helping to prevent tooth decay and maintain good oral health.'
+            }
           </Text>
         </View>
         
         {/* Contraindication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Contraindication:</Text>
+          <Text style={styles.sectionHeader}>
+            {isTagalog ? 'Kontraindikasyon (Contraindication):' : 'Contraindication:'}
+          </Text>
           <Text style={styles.text}>
-            Tooth sealants are contraindicated for teeth that already have cavities or existing restorations on the chewing surface. 
-            They may also not be recommended for teeth with shallow pits and grooves that can be easily cleaned through regular brushing and good oral hygiene practices.
+            {isTagalog 
+              ? 'Ang tooth sealants ay hindi angkop para sa mga ngiping mayroon nang sira o may kasalukuyang pasta sa panguyaang bahagi. Maaari ring hindi ito irekomenda sa mga ngiping mababaw ang mga hukay at uka na madali namang malinis sa pamamagitan ng regular na pagsipilyo at tamang pangangalaga sa ngipin.'
+              : 'Tooth sealants are contraindicated for teeth that already have cavities or existing restorations on the chewing surface. They may also not be recommended for teeth with shallow pits and grooves that can be easily cleaned through regular brushing and good oral hygiene practices.'
+            }
           </Text>
         </View>
       </ScrollView>

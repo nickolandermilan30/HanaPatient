@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { auth } from '../../../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function RPD() {
   const router = useRouter();
+  const { language } = useLocalSearchParams();
+  const isTagalog = language === 'filipino';
+  
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,11 +25,11 @@ export default function RPD() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#4A148C" />
         </TouchableOpacity>
-              <TouchableOpacity 
+        <TouchableOpacity 
           style={styles.topApplyButton} 
           onPress={() => router.push('/Layout/Apply/RPDA')}
         >
-          <Text style={styles.topApplyText}>Apply</Text>
+          <Text style={styles.topApplyText}>{isTagalog ? 'Mag-aplay' : 'Apply'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -35,12 +38,16 @@ export default function RPD() {
           <View style={styles.imageCircle}>
             <Image source={require('../../../Image/removable.png')} style={styles.headerImage} />
           </View>
-          <Text style={styles.title}>Removable Partial Denture</Text>
+          <Text style={styles.title}>
+            {isTagalog ? 'Removable Partial Denture' : 'Removable Partial Denture'}
+          </Text>
           <Text style={styles.subTitle}>(Pustiso na natatanggal)</Text>
           
           <View style={styles.userContainer}>
-            <Text style={styles.userLabel}>Logged in as:</Text>
-            <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
+            <Text style={styles.userLabel}>
+              {isTagalog ? 'Naka-log in bilang:' : 'Logged in as:'}
+            </Text>
+            <Text style={styles.userEmail}>{userEmail || (isTagalog ? 'Walang user na naka-log in' : 'No user logged in')}</Text>
           </View>
         </View>
 
@@ -51,19 +58,25 @@ export default function RPD() {
 
         {/* Indication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Indication:</Text>
+          <Text style={styles.sectionHeader}>
+            {isTagalog ? 'Indikasyon (Indication):' : 'Indication:'}
+          </Text>
           <Text style={styles.text}>
-            Removable partial denture for people who have multiple missing teeth spaces along the span of the upper and lower jaw. 
-            To restore normal bite of the patient, also for chewing efficiency, speech, esthetics.
+            {isTagalog 
+              ? 'Removable partial denture para sa mga taong mayroong maraming nawalang espasyo ng ngipin sa kahabaan ng itaas at ibabang panga. Upang maibalik ang normal na kagat ng pasyente, pati na rin para sa kahusayan sa nguya, pagsasalita, at kagandahan.'
+              : 'Removable partial denture for people who have multiple missing teeth spaces along the span of the upper and lower jaw. To restore normal bite of the patient, also for chewing efficiency, speech, esthetics.'}
           </Text>
         </View>
         
         {/* Contraindication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Contraindication:</Text>
+          <Text style={styles.sectionHeader}>
+            {isTagalog ? 'Kontraindikasyon (Contraindication):' : 'Contraindication:'}
+          </Text>
           <Text style={styles.text}>
-            Not recommended in patients with poor oral hygiene, active gum disease, untreated dental caries, or inadequate abutment teeth for support. 
-            It may also be unsuitable for individuals with severe dry mouth, a pronounced gag reflex, physical or mental conditions that prevent proper denture care.
+            {isTagalog 
+              ? 'Hindi inirerekomenda sa mga pasyenteng may mahinang kalinisan sa bibig, aktibong sakit sa gilagid, hindi ginamot na pagkabulok ng ngipin, o hindi sapat na mga abutment na ngipin para sa suporta. Maaari rin itong hindi angkop para sa mga indibidwal na may matinding tuyong bibig, malakas na gag reflex, o mga pisikal o mental na kondisyon na pumipigil sa tamang pangangalaga ng pustiso.'
+              : 'Not recommended in patients with poor oral hygiene, active gum disease, untreated dental caries, or inadequate abutment teeth for support. It may also be unsuitable for individuals with severe dry mouth, a pronounced gag reflex, physical or mental conditions that prevent proper denture care.'}
           </Text>
         </View>
       </ScrollView>

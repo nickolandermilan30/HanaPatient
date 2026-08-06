@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { auth } from '../../../Firebase/FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function BL() {
   const router = useRouter();
+  const { language } = useLocalSearchParams();
+  const isTagalog = language === 'filipino';
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,9 +26,9 @@ export default function BL() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.topApplyButton} 
-          onPress={() => router.push('/Layout/Apply/BLA')}
+          onPress={() => router.push({ pathname: '/Layout/Apply/BLA', params: { language } })}
         >
-          <Text style={styles.topApplyText}>Apply</Text>
+          <Text style={styles.topApplyText}>{isTagalog ? 'Mag-apply' : 'Apply'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -40,8 +42,8 @@ export default function BL() {
           <Text style={styles.subTitle}>(Pagpapaputi ng ngipin)</Text>
           
           <View style={styles.userContainer}>
-            <Text style={styles.userLabel}>Logged in as:</Text>
-            <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
+            <Text style={styles.userLabel}>{isTagalog ? 'Naka-log in bilang:' : 'Logged in as:'}</Text>
+            <Text style={styles.userEmail}>{userEmail || (isTagalog ? 'Walang naka-log in na user' : 'No user logged in')}</Text>
           </View>
         </View>
 
@@ -52,20 +54,21 @@ export default function BL() {
 
         {/* Indication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Indication:</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Indikasyon (Indication):' : 'Indication:'}</Text>
           <Text style={styles.text}>
-            Bleaching is indicated for patients who want to improve the color of their teeth by reducing stains and discoloration. 
-            It is commonly recommended for teeth that have become yellowed due to aging, food and beverage stains, smoking, or certain medications. 
-            Bleaching may also be used to enhance the appearance of a healthy smile and improve dental esthetics.
+            {isTagalog 
+              ? 'Ang bleaching ay para sa mga pasyenteng nais pagandahin ang kulay ng kanilang ngipin sa pamamagitan ng pagbawas ng mga mantsa at pagdidilaw. Karaniwan itong inirerekomenda para sa mga ngiping namilaw dahil sa katandaan, mantsa sa pagkain at inumin, paninigarilyo, o ilang mga gamot. Maaari din itong gamitin upang mapaganda ang hitsura ng malusog na ngiti at mapabuti ang estetika ng ngipin.'
+              : 'Bleaching is indicated for patients who want to improve the color of their teeth by reducing stains and discoloration. It is commonly recommended for teeth that have become yellowed due to aging, food and beverage stains, smoking, or certain medications. Bleaching may also be used to enhance the appearance of a healthy smile and improve dental esthetics.'}
           </Text>
         </View>
         
         {/* Contraindication */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Contraindication:</Text>
+          <Text style={styles.sectionHeader}>{isTagalog ? 'Kontraindikasyon (Contraindication):' : 'Contraindication:'}</Text>
           <Text style={styles.text}>
-            Bleaching is contraindicated in patients with untreated cavities, gum disease, or tooth sensitivity, as the procedure may worsen these conditions. 
-            It is also not recommended for individuals with extensive dental restorations on visible teeth, pregnant or breastfeeding women, or patients who have unrealistic expectations about the results of treatment.
+            {isTagalog 
+              ? 'Ang bleaching ay hindi ipinapayo sa mga pasyenteng may hindi pa nagamot na sira sa ngipin, sakit sa gilagid, o sensitibong ngipin, dahil maaaring lumala ang mga kondisyong ito. Hindi rin ito inirerekomenda sa mga indibidwal na may malalaking restorasyon o pasta sa nakikitang ngipin, mga buntis o nagpapasusong ina, o mga pasyenteng hindi makatotohanan ang inaasahan sa resulta ng paggamot.'
+              : 'Bleaching is contraindicated in patients with untreated cavities, gum disease, or tooth sensitivity, as the procedure may worsen these conditions. It is also not recommended for individuals with extensive dental restorations on visible teeth, pregnant or breastfeeding women, or patients who have unrealistic expectations about the results of treatment.'}
           </Text>
         </View>
       </ScrollView>
