@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Home from './Home'; 
 import Customer from './Customer';
 import Profile from './Profile';
+import Clear from './Clear';
 
 export default function AdminHome() {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function AdminHome() {
       case 'Home': return <Home setActiveTab={setActiveTab} />;
       case 'Customer': return <Customer />;
       case 'Profile': return <Profile />;
+      case 'Clear': return <Clear />;
       default: return <Home setActiveTab={setActiveTab} />;
     }
   };
@@ -90,6 +92,7 @@ export default function AdminHome() {
         {/* Navbar Items */}
         <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Home')}><Ionicons name="home" size={24} color={activeTab === 'Home' ? '#4A148C' : '#999'} /><Text style={{fontSize: 10, color: activeTab === 'Home' ? '#4A148C' : '#999'}}>Home</Text></TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Customer')}><Ionicons name="people" size={24} color={activeTab === 'Customer' ? '#4A148C' : '#999'} /><Text style={{fontSize: 10, color: activeTab === 'Customer' ? '#4A148C' : '#999'}}>Customer</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Clear')}><Ionicons name="trash" size={24} color={activeTab === 'Clear' ? '#4A148C' : '#999'} /><Text style={{fontSize: 10, color: activeTab === 'Clear' ? '#4A148C' : '#999'}}>Clear</Text></TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Profile')}><Ionicons name="person" size={24} color={activeTab === 'Profile' ? '#4A148C' : '#999'} /><Text style={{fontSize: 10, color: activeTab === 'Profile' ? '#4A148C' : '#999'}}>Profile</Text></TouchableOpacity>
       </View>
     </SafeAreaView>
