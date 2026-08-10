@@ -14,11 +14,11 @@ export default function FAA() {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   
-  const [selectedTeeth, setSelectedTeeth] = useState<{ [key: string]: string | null }>({
-    upperRight: null,
-    upperLeft: null,
-    lowerRight: null,
-    lowerLeft: null,
+  const [selectedTeeth, setSelectedTeeth] = useState<{ [key: string]: string[] }>({
+    upperRight: [],
+    upperLeft: [],
+    lowerRight: [],
+    lowerLeft: [],
   });
 
   const [modalVisible, setModalVisible] = useState<{ key: string | null }>({ key: null });
@@ -51,14 +51,26 @@ export default function FAA() {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSelect = (key: string, item: string) => {
-    setSelectedTeeth(prev => ({ ...prev, [key]: item }));
-    setModalVisible({ key: null });
+  const handleToggleTooth = (key: string, item: string) => {
+    setSelectedTeeth(prev => {
+      const currentList = prev[key] || [];
+      if (currentList.includes(item)) {
+        return { ...prev, [key]: currentList.filter(tooth => tooth !== item) };
+      } else {
+        return { ...prev, [key]: [...currentList, item] };
+      }
+    });
   };
 
   const handleSubmit = async () => {
     if (selectedImages.length === 0) {
       Alert.alert("Error", "Please attach at least one image.");
+      return;
+    }
+
+    const totalSelected = Object.values(selectedTeeth).reduce((sum, list) => sum + list.length, 0);
+    if (totalSelected === 0) {
+      Alert.alert("Error", "Please select at least one tooth across any quadrant.");
       return;
     }
 
@@ -112,7 +124,7 @@ export default function FAA() {
           <Text style={styles.userEmail}>{userEmail || 'No user logged in'}</Text>
         </View>
 
-        <Text style={styles.questionText}>Which tooth needs Fluoride Application?</Text>
+        <Text style={styles.questionText}>Which teeth need Fluoride Application?</Text>
 
         <View style={styles.buttonRow}>
           {renderButton('upperRight', 'Upper Right', selectedTeeth, setModalVisible)}
@@ -152,22 +164,35 @@ export default function FAA() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* SELECTION MODAL */}
+      {/* MULTI-SELECT TOOTH MODAL */}
       <Modal visible={!!modalVisible.key} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Tooth</Text>
+            <Text style={styles.modalTitle}>Select Teeth ({modalVisible.key ? labelMapping[modalVisible.key] : ''})</Text>
+            <Text style={styles.modalSubInstructions}>Tap to check/uncheck multiple teeth</Text>
             <FlatList 
               data={modalVisible.key ? toothOptions[modalVisible.key] : []}
               keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.modalItem} onPress={() => handleSelect(modalVisible.key!, item)}>
-                  <Text>{item}</Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const key = modalVisible.key!;
+                const isSelected = selectedTeeth[key]?.includes(item);
+                return (
+                  <TouchableOpacity 
+                    style={[styles.modalItem, isSelected && styles.modalItemSelected]} 
+                    onPress={() => handleToggleTooth(key, item)}
+                  >
+                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextSelected]}>{item}</Text>
+                    <Ionicons 
+                      name={isSelected ? "checkbox" : "square-outline"} 
+                      size={22} 
+                      color={isSelected ? "#4A148C" : "#999"} 
+                    />
+                  </TouchableOpacity>
+                );
+              }}
             />
             <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible({ key: null })}>
-              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -193,11 +218,21 @@ export default function FAA() {
   );
 }
 
+const labelMapping: { [key: string]: string } = {
+  upperRight: 'Upper Right',
+  upperLeft: 'Upper Left',
+  lowerRight: 'Lower Right',
+  lowerLeft: 'Lower Left'
+};
+
 function renderButton(key: string, label: string, selectedTeeth: any, setModalVisible: any) {
+  const chosenList = selectedTeeth[key] || [];
+  const displayText = chosenList.length > 0 ? `${label} (${chosenList.length})` : label;
+
   return (
-    <TouchableOpacity style={styles.button} onPress={() => setModalVisible({ key })}>
-      <Text style={styles.buttonText}>{selectedTeeth[key] || label}</Text>
-      <Ionicons name="chevron-down" size={16} color="#4A148C" />
+    <TouchableOpacity style={[styles.button, chosenList.length > 0 && styles.buttonActive]} onPress={() => setModalVisible({ key })}>
+      <Text style={[styles.buttonText, chosenList.length > 0 && styles.buttonTextActive]} numberOfLines={1}>{displayText}</Text>
+      <Ionicons name="chevron-down" size={16} color={chosenList.length > 0 ? "#FFF" : "#4A148C"} />
     </TouchableOpacity>
   );
 }
@@ -213,7 +248,9 @@ const styles = StyleSheet.create({
   questionText: { fontSize: 18, fontWeight: 'bold', color: '#4A148C', textAlign: 'center', marginBottom: 20 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   button: { backgroundColor: '#FFF', padding: 15, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '48%', borderWidth: 1, borderColor: '#E1BEE7' },
-  buttonText: { color: '#4A148C', fontWeight: 'bold', fontSize: 12 },
+  buttonActive: { backgroundColor: '#4A148C', borderColor: '#4A148C' },
+  buttonText: { color: '#4A148C', fontWeight: 'bold', fontSize: 12, flex: 1, marginRight: 5 },
+  buttonTextActive: { color: '#FFF' },
   imageContainer: { width: '100%', height: 200, marginVertical: 10 },
   anatomyImage: { width: '100%', height: '100%' },
   card: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginTop: 20, elevation: 3 },
@@ -228,8 +265,12 @@ const styles = StyleSheet.create({
   submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 25, padding: 25, maxHeight: '80%' },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center', color: '#4A148C' },
-  modalItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5, textAlign: 'center', color: '#4A148C' },
+  modalSubInstructions: { fontSize: 12, color: '#666', textAlign: 'center', marginBottom: 15 },
+  modalItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 8, marginVertical: 2 },
+  modalItemSelected: { backgroundColor: '#F3E5F5' },
+  modalItemText: { color: '#333', fontSize: 15 },
+  modalItemTextSelected: { color: '#4A148C', fontWeight: 'bold' },
   closeButton: { marginTop: 15, backgroundColor: '#4A148C', padding: 15, borderRadius: 12, alignItems: 'center' },
   successTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A148C', marginTop: 10 },
   successSub: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 5 }

@@ -99,7 +99,7 @@ export default function BLA() {
           <Text style={styles.sectionHeader}>Reference</Text>
           <Image source={require('../../../assets/CD Apply/BT.png')} style={styles.referenceImage} resizeMode="contain" />
           
-          <Text style={[styles.sectionHeader, { marginTop: 20 }]}>Select Tooth Shade:</Text>
+          <Text style={[styles.sectionHeader, { marginTop: 20 }]}>What shade do you think is your teeth? Select your current tooth shade</Text>
           <TouchableOpacity style={styles.dropdown} onPress={() => setModalVisible(true)}>
             <Text style={styles.dropdownText}>{selectedShade || "Tap to select shade"}</Text>
             <Ionicons name="chevron-down" size={20} color="#4A148C" />

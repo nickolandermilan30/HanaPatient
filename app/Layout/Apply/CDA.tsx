@@ -17,7 +17,6 @@ export default function CDA() {
   const [visiting, setVisiting] = useState<string | null>(null);
   const [phoneOwner, setPhoneOwner] = useState<string | null>(null);
   const [fbName, setFbName] = useState('');
-  const [selectedSample, setSelectedSample] = useState<string | null>(null);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -41,8 +40,8 @@ export default function CDA() {
   };
 
   const handleSubmit = async () => {
-    if (!visiting || !phoneOwner || !selectedSample) { 
-      Alert.alert("Error", "Please answer all questions and select a sample picture."); 
+    if (!visiting || !phoneOwner) { 
+      Alert.alert("Error", "Please answer all questions."); 
       return; 
     }
     if (selectedImages.length === 0) { Alert.alert("Error", "Please attach at least one image."); return; }
@@ -70,7 +69,6 @@ export default function CDA() {
         visiting3to4Times: visiting,
         phoneOwner: phoneOwner,
         relativeFbName: fbName,
-        selectedDentureType: selectedSample,
         imageUris: uploadedUrls,
         timestamp: new Date().toISOString()
       });
@@ -120,16 +118,16 @@ export default function CDA() {
         <TextInput style={styles.input} placeholder="Relative's Facebook Name" value={fbName} onChangeText={setFbName} />
 
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>Select Denture Type:</Text>
+          <Text style={styles.sectionHeader}>Sample Picture</Text>
           <View style={styles.sampleContainer}>
-            <TouchableOpacity onPress={() => setSelectedSample('Upper')} style={[styles.sampleTouch, selectedSample === 'Upper' && styles.selectedSample]}>
-                <Image source={require('../../../assets/CD Apply/Upper.png')} style={styles.sampleImg} />
-                <Text style={styles.labelSmall}>Upper</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setSelectedSample('Lower')} style={[styles.sampleTouch, selectedSample === 'Lower' && styles.selectedSample]}>
-                <Image source={require('../../../assets/CD Apply/Lower.png')} style={styles.sampleImg} />
-                <Text style={styles.labelSmall}>Lower</Text>
-            </TouchableOpacity>
+            <View style={styles.sampleTouch}>
+              <Image source={require('../../../assets/CD Apply/Upper.png')} style={styles.sampleImg} />
+              <Text style={styles.labelSmall}>Upper</Text>
+            </View>
+            <View style={styles.sampleTouch}>
+              <Image source={require('../../../assets/CD Apply/Lower.png')} style={styles.sampleImg} />
+              <Text style={styles.labelSmall}>Lower</Text>
+            </View>
           </View>
         </View>
 
@@ -195,7 +193,6 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 16, fontWeight: 'bold', color: '#4A148C', marginBottom: 10 },
   sampleContainer: { flexDirection: 'row', justifyContent: 'space-around' },
   sampleTouch: { alignItems: 'center', padding: 5, borderRadius: 10 },
-  selectedSample: { borderWidth: 2, borderColor: '#4A148C' },
   sampleImg: { width: 120, height: 80, borderRadius: 10 },
   labelSmall: { marginTop: 5, fontSize: 12, fontWeight: '600' },
   uploadBox: { height: 90, borderStyle: 'dashed', borderWidth: 2, borderColor: '#4A148C', borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3E5F5' },
