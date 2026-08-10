@@ -40,16 +40,53 @@ export default function Fluoride({ item, onClose }: { item: any, onClose: () => 
     }
   };
 
+  const renderQuadrantTeeth = (quadrantKey: string, quadrantLabel: string) => {
+    const rawValue = item.selectedTeeth?.[quadrantKey];
+    
+    // Suportahan kung array (multi-select) o kung string man o iba pang format
+    let teethList: string[] = [];
+    if (Array.isArray(rawValue)) {
+      teethList = rawValue;
+    } else if (typeof rawValue === 'string' && rawValue.trim() !== '') {
+      teethList = [rawValue];
+    }
+
+    if (teethList.length === 0) return null;
+
+    return (
+      <View style={styles.quadrantBox} key={quadrantKey}>
+        <View style={styles.quadrantHeaderRow}>
+          <Ionicons name="medical" size={16} color="#E91E63" style={{ marginRight: 6 }} />
+          <Text style={styles.quadrantTitle}>{quadrantLabel}</Text>
+        </View>
+        <View style={styles.teethListContainer}>
+          {teethList.map((tooth: string, index: number) => (
+            <View key={index} style={styles.toothChip}>
+              <Text style={styles.toothChipText}>{tooth}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   const renderTeethInfo = () => {
     if (!item.selectedTeeth) return <Text style={styles.value}>Not specified</Text>;
-    return Object.entries(item.selectedTeeth).map(([key, value]) => (
-      <View key={key} style={styles.teethItem}>
-        <Ionicons name="medical" size={16} color="#E91E63" style={{ marginRight: 8 }} />
-        <Text style={styles.value}>
-          {key.replace(/([A-Z])/g, ' $1')}: <Text style={{ fontWeight: 'normal' }}>{String(value)}</Text>
-        </Text>
-      </View>
-    ));
+
+    const quadrants = [
+      { key: 'upperRight', label: 'Upper Right' },
+      { key: 'upperLeft', label: 'Upper Left' },
+      { key: 'lowerRight', label: 'Lower Right' },
+      { key: 'lowerLeft', label: 'Lower Left' },
+    ];
+
+    const content = quadrants.map(q => renderQuadrantTeeth(q.key, q.label)).filter(Boolean);
+
+    if (content.length > 0) {
+      return content;
+    }
+
+    return <Text style={styles.value}>No specific teeth selected.</Text>;
   };
 
   return (
@@ -65,9 +102,11 @@ export default function Fluoride({ item, onClose }: { item: any, onClose: () => 
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.infoCard}>
             <Text style={styles.label}>Patient Name</Text>
-            <Text style={styles.value}>{item?.patientName}</Text>
+            <Text style={styles.value}>{item?.patientName || 'Unknown'}</Text>
             <Text style={[styles.label, { marginTop: 15 }]}>Date Submitted</Text>
-            <Text style={styles.value}>{item?.timestamp ? new Date(item.timestamp).toLocaleDateString('en-PH', { dateStyle: 'long' }) : 'N/A'}</Text>
+            <Text style={styles.value}>
+              {item?.timestamp ? new Date(item.timestamp).toLocaleDateString('en-PH', { dateStyle: 'long' }) : 'N/A'}
+            </Text>
           </View>
 
           <Text style={styles.sectionHeader}>Selected Teeth</Text>
@@ -114,8 +153,13 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
   value: { fontSize: 15, fontWeight: '700', color: '#333' },
   sectionHeader: { fontSize: 14, fontWeight: '700', color: '#E91E63', marginBottom: 10 },
-  messageBox: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE', padding: 15, borderRadius: 15, marginBottom: 20 },
-  teethItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  messageBox: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE', padding: 15, borderRadius: 15, marginBottom: 20, gap: 12 },
+  quadrantBox: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#EFEFEF', padding: 12, borderRadius: 12 },
+  quadrantHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  quadrantTitle: { fontSize: 13, fontWeight: '700', color: '#E91E63' },
+  teethListContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  toothChip: { backgroundColor: '#FCE4EC', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: '#F8BBD0' },
+  toothChipText: { fontSize: 12, fontWeight: '600', color: '#AD1457' },
   imageScroll: { marginBottom: 20 },
   imageWrapper: { marginRight: 15 },
   image: { width: 120, height: 120, borderRadius: 15, borderWidth: 2, borderColor: '#E91E63' },
