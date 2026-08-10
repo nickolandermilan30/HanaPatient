@@ -1,13 +1,15 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../../../../Firebase/FirebaseConfig';
 
 export default function Fluoride({ item, onClose }: { item: any, onClose: () => void }) {
-  
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+
   // Function para ilipat ang data sa kaukulang folder
-  const moveDataToStatus = async (status: 'Approved' | 'Rejected') => {
+  const moveDataToStatus = async (status: 'Approved' | 'Rejected', reason: string = '') => {
     try {
       // 1. Reference sa kasalukuyang record sa "Tooth concern"
       const oldRef = ref(db, `Tooth concern/${item.id}`);
@@ -19,17 +21,21 @@ export default function Fluoride({ item, onClose }: { item: any, onClose: () => 
       if (snapshot.exists()) {
         const data = snapshot.val();
         
-        // I-save sa bagong location na may status at timestamp
-        await set(newRef, { 
+        // Payload na isasave sa database kasama ang rejection reason kung rejected
+        const updatedData = {
           ...data, 
           status: status, 
-          processedAt: new Date().toISOString() 
-        });
+          processedAt: new Date().toISOString(),
+          ...(status === 'Rejected' && { rejectionReason: reason })
+        };
+
+        await set(newRef, updatedData);
         
         // Burahin ang data sa lumang location (Tooth concern) para maalis sa pending list
         await remove(oldRef);
         
         Alert.alert("Success", `Fluoride concern has been moved to ${status}.`);
+        setRejectModalVisible(false);
         onClose();
       } else {
         Alert.alert("Error", "Record not found.");
@@ -129,7 +135,7 @@ export default function Fluoride({ item, onClose }: { item: any, onClose: () => 
         </ScrollView>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => moveDataToStatus('Rejected')}>
+          <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => setRejectModalVisible(true)}>
             <Ionicons name="close-circle" size={20} color="#FFF" />
             <Text style={styles.btnText}> Reject</Text>
           </TouchableOpacity>
@@ -138,6 +144,53 @@ export default function Fluoride({ item, onClose }: { item: any, onClose: () => 
             <Text style={styles.btnText}> Approve</Text>
           </TouchableOpacity>
         </View>
+
+        {/* REJECTION REASON MODAL */}
+        <Modal
+          visible={rejectModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setRejectModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.reasonCard}>
+              <Text style={styles.reasonTitle}>Reason for Rejection</Text>
+              <Text style={styles.reasonSubtitle}>Please provide a reason why this concern is being rejected.</Text>
+              
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type reason here..."
+                placeholderTextColor="#999"
+                multiline={true}
+                value={rejectionReason}
+                onChangeText={setRejectionReason}
+              />
+
+              <View style={styles.reasonActionButtons}>
+                <TouchableOpacity 
+                  style={[styles.reasonBtn, styles.cancelBtn]} 
+                  onPress={() => setRejectModalVisible(false)}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.reasonBtn, styles.confirmRejectBtn]} 
+                  onPress={() => {
+                    if (!rejectionReason.trim()) {
+                      Alert.alert("Required", "Please enter a rejection reason.");
+                      return;
+                    }
+                    moveDataToStatus('Rejected', rejectionReason);
+                  }}
+                >
+                  <Text style={styles.confirmBtnText}>Submit Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
       </View>
     </View>
   );
@@ -167,5 +220,18 @@ const styles = StyleSheet.create({
   btn: { flexDirection: 'row', padding: 16, borderRadius: 15, width: '47%', alignItems: 'center', justifyContent: 'center' },
   rejectBtn: { backgroundColor: '#E91E63' },
   approveBtn: { backgroundColor: '#4CAF50' },
-  btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 }
+  btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
+
+  // Rejection Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  reasonCard: { backgroundColor: '#FFF', width: '100%', padding: 20, borderRadius: 20, elevation: 5 },
+  reasonTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 5 },
+  reasonSubtitle: { fontSize: 13, color: '#666', marginBottom: 15 },
+  textInput: { borderWidth: 1, borderColor: '#DDD', borderRadius: 12, padding: 12, height: 100, textAlignVertical: 'top', fontSize: 14, backgroundColor: '#FAFAFA', marginBottom: 20 },
+  reasonActionButtons: { flexDirection: 'row', justifyContent: 'space-between' },
+  reasonBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center' },
+  cancelBtn: { backgroundColor: '#F0F0F0', marginRight: 10 },
+  cancelBtnText: { color: '#333', fontWeight: '600' },
+  confirmRejectBtn: { backgroundColor: '#E91E63', marginLeft: 10 },
+  confirmBtnText: { color: '#FFF', fontWeight: 'bold' }
 });
