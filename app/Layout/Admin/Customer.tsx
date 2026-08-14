@@ -25,6 +25,7 @@ interface ConcernItem {
   patientName: string;
   userId?: string;
   imageUris?: string[];
+  rejectionReason?: string;
   [key: string]: any;
 }
 
@@ -62,7 +63,6 @@ interface UserProfile {
   [key: string]: any;
 }
 
-// Component para sa pag-handle ng image loading
 const LoadingImage = ({ uri }: { uri: string }) => {
   const [loading, setLoading] = useState(true);
   return (
@@ -85,6 +85,9 @@ export default function Customer() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ConcernItem | null>(null);
 
+  // Loading indicator state para sa tab switching / reloading
+  const [isLoadingTab, setIsLoadingTab] = useState(false);
+
   // Patient Details Modal States
   const [patientModalVisible, setPatientModalVisible] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
@@ -92,8 +95,8 @@ export default function Customer() {
 
   useEffect(() => {
     const nodes = [
-      { path: 'concerns', type: 'General', status: 'Pending' },
-      { path: 'Tooth concern', type: 'Tooth', status: 'Pending' },
+      { path: 'concerns', type: 'General Concern', status: 'Pending' },
+      { path: 'Tooth concern', type: 'Tooth Concern', status: 'Pending' },
       { path: 'Approved', type: 'Status', status: 'Approved' },
       { path: 'Rejected', type: 'Status', status: 'Rejected' },
     ];
@@ -107,27 +110,50 @@ export default function Customer() {
         onValue(ref(db, node.path), (snapshot) => {
           const data = snapshot.val() || {};
           const formatted = Object.keys(data).map(k => {
-            const itemEmail = data[k].email || data[k].user;
+            const item = data[k];
+            const itemEmail = item.email || item.user;
             const matchedUserEntry = Object.entries(users).find(([uid, u]: [string, any]) => u.email === itemEmail);
             const patientName = matchedUserEntry 
                ? `${(matchedUserEntry[1] as any).firstName || ''} ${(matchedUserEntry[1] as any).lastName || ''}`.trim()
                : 'Unknown';
             const userId = matchedUserEntry ? matchedUserEntry[0] : undefined;
 
+            const imageUris = item.imageUris || item.images || [];
+
             return {
-              ...data[k],
+              ...item,
               id: k,
               status: node.status,
-              type: data[k].type || node.type,
+              type: item.type || node.type,
               patientName,
-              userId
+              userId,
+              imageUris
             };
           });
-          setConcerns(prev => [...prev.filter(p => p.status !== node.status), ...formatted]);
+
+          setConcerns(prev => [
+            ...prev.filter(p => {
+              if (node.status === 'Pending') {
+                if (node.path === 'concerns') return p.type !== 'General Concern' && p.status === 'Pending';
+                if (node.path === 'Tooth concern') return p.type !== 'Tooth Concern' && p.status === 'Pending';
+              }
+              return p.status !== node.status;
+            }), 
+            ...formatted
+          ]);
         });
       });
     });
   }, []);
+
+  // Function para i-handle ang paglipat ng tab na may kasamang loading effect
+  const handleTabChange = (tab: 'Pending' | 'Approved' | 'Rejected') => {
+    setIsLoadingTab(true);
+    setActiveTab(tab);
+    setTimeout(() => {
+      setIsLoadingTab(false);
+    }, 300); // 300ms smooth transition loading simulation
+  };
 
   const openPatientDetails = (item: ConcernItem) => {
     if (item.userId && usersMap[item.userId]) {
@@ -135,7 +161,6 @@ export default function Customer() {
       setSelectedPatientName(item.patientName);
       setPatientModalVisible(true);
     } else {
-      // Fallback search by email if userId wasn't directly bound
       const matched = Object.values(usersMap).find((u: any) => u.email === (item.email || item.user));
       if (matched) {
         setSelectedPatient(matched);
@@ -146,9 +171,9 @@ export default function Customer() {
   };
 
   const StatusDetailModal = ({ item, color, icon, title }: { item: ConcernItem, color: string, icon: string, title: string }) => {
-    const exclude = ['id', 'status', 'patientName', 'userId', 'imageUris', 'type', 'user', 'timestamp', 'processedAt'];
+    const exclude = ['id', 'status', 'patientName', 'userId', 'imageUris', 'images', 'type', 'user', 'timestamp', 'processedAt', 'rejectionReason'];
     const details = Object.entries(item).filter(([key, val]) => !exclude.includes(key) && val !== null && typeof val !== 'object');
-    const nested = Object.entries(item).filter(([key, val]) => typeof val === 'object' && val !== null && !Array.isArray(val) && key !== 'imageUris');
+    const nested = Object.entries(item).filter(([key, val]) => typeof val === 'object' && val !== null && !Array.isArray(val) && key !== 'imageUris' && key !== 'images');
 
     return (
       <View style={styles.modalOverlay}>
@@ -159,6 +184,14 @@ export default function Customer() {
             </View>
             <Text style={[styles.modalTitle, { color }]}>{title}</Text>
             <Text style={styles.patientName}>{item.patientName}</Text>
+
+            {/* Kung Rejected, ipakita ang Rejection Reason nang prominente */}
+            {item.status === 'Rejected' && item.rejectionReason && (
+              <View style={[styles.sectionContainer, { backgroundColor: '#ffebee', borderColor: '#ffcdd2' }]}>
+                <Text style={[styles.sectionHeader, { color: '#c62828' }]}>Rejection Reason</Text>
+                <Text style={[styles.detailRow, { color: '#b71c1c', fontWeight: '600' }]}>{item.rejectionReason}</Text>
+              </View>
+            )}
 
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionHeader}>Basic Information</Text>
@@ -182,8 +215,12 @@ export default function Customer() {
               </View>
             )}
 
-            <Text style={styles.sectionHeader}>Supporting Photos</Text>
-            {item.imageUris?.map((uri, i) => <LoadingImage key={i} uri={uri} />)}
+            {item.imageUris && item.imageUris.length > 0 && (
+              <>
+                <Text style={styles.sectionHeader}>Supporting Photos</Text>
+                {item.imageUris.map((uri, i) => <LoadingImage key={i} uri={uri} />)}
+              </>
+            )}
           </ScrollView>
           <TouchableOpacity style={[styles.closeBtn, { backgroundColor: color }]} onPress={() => setModalVisible(false)}>
             <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close Details</Text>
@@ -207,7 +244,9 @@ export default function Customer() {
       'Removable Partial Denture': PartialDenture, 
       'Bleaching': Bleaching, 
       'Fluoride Application': Fluoride, 
-      'Sealants Application': Sealant 
+      'Sealants Application': Sealant,
+      'General Concern': GenConern,
+      'Tooth Concern': GenConern
     };
     const Component = maps[item.type] || GenConern;
     return <Component {...props} />;
@@ -216,35 +255,60 @@ export default function Customer() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Patient Records</Text>
+      
+      {/* Tabs */}
       <View style={styles.tabContainer}>
         {(['Pending', 'Approved', 'Rejected'] as const).map(tab => (
-          <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && { backgroundColor: tab === 'Pending' ? '#2196F3' : tab === 'Approved' ? '#4CAF50' : '#F44336' }]} onPress={() => setActiveTab(tab)}>
+          <TouchableOpacity 
+            key={tab} 
+            style={[styles.tab, activeTab === tab && { backgroundColor: tab === 'Pending' ? '#2196F3' : tab === 'Approved' ? '#4CAF50' : '#F44336' }]} 
+            onPress={() => handleTabChange(tab)}
+          >
             <Text style={[styles.tabText, activeTab === tab && { color: '#FFF' }]}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {concerns.filter(c => c.status === activeTab).map((item, index) => (
-          <View key={index} style={styles.cardContainer}>
-            <TouchableOpacity style={styles.cardMain} onPress={() => { setSelectedItem(item); setModalVisible(true); }}>
-              <View style={[styles.iconBox, { backgroundColor: activeTab === 'Approved' ? '#e8f5e9' : activeTab === 'Rejected' ? '#ffebee' : '#e3f2fd' }]}>
-                <Ionicons name={activeTab === 'Approved' ? 'checkmark-circle' : activeTab === 'Rejected' ? 'close-circle' : 'time'} size={24} color={activeTab === 'Pending' ? '#2196F3' : activeTab === 'Approved' ? '#4CAF50' : '#F44336'} />
-              </View>
-              <View style={styles.info}>
-                <Text style={styles.name}>{item.patientName}</Text>
-                <Text style={styles.typeText}>{item.type}</Text>
-              </View>
-            </TouchableOpacity>
 
-            {activeTab === 'Pending' && (
-              <TouchableOpacity style={styles.patientDetailsBtn} onPress={() => openPatientDetails(item)}>
-                <Ionicons name="person-circle-outline" size={20} color="#2196F3" />
-                <Text style={styles.patientDetailsBtnText}>Patient Details</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+      {/* Main Content Area with Loader */}
+      {isLoadingTab ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
+          <Text style={styles.loadingText}>Loading records...</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {concerns.filter(c => c.status === activeTab).length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="folder-open-outline" size={50} color="#ccc" />
+              <Text style={styles.emptyText}>No {activeTab.toLowerCase()} records found.</Text>
+            </View>
+          ) : (
+            concerns.filter(c => c.status === activeTab).map((item, index) => (
+              <View key={index} style={styles.cardContainer}>
+                <TouchableOpacity style={styles.cardMain} onPress={() => { setSelectedItem(item); setModalVisible(true); }}>
+                  <View style={[styles.iconBox, { backgroundColor: activeTab === 'Approved' ? '#e8f5e9' : activeTab === 'Rejected' ? '#ffebee' : '#e3f2fd' }]}>
+                    <Ionicons name={activeTab === 'Approved' ? 'checkmark-circle' : activeTab === 'Rejected' ? 'close-circle' : 'time'} size={24} color={activeTab === 'Pending' ? '#2196F3' : activeTab === 'Approved' ? '#4CAF50' : '#F44336'} />
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={styles.name}>{item.patientName}</Text>
+                    <Text style={styles.typeText}>{item.type}</Text>
+                    {activeTab === 'Rejected' && item.rejectionReason && (
+                      <Text style={styles.reasonText} numberOfLines={1}>Reason: {item.rejectionReason}</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                {activeTab === 'Pending' && (
+                  <TouchableOpacity style={styles.patientDetailsBtn} onPress={() => openPatientDetails(item)}>
+                    <Ionicons name="person-circle-outline" size={20} color="#2196F3" />
+                    <Text style={styles.patientDetailsBtnText}>Patient Details</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
 
       {/* Request Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
@@ -264,7 +328,6 @@ export default function Customer() {
 
               {selectedPatient && (
                 <>
-                  {/* Personal Info */}
                   <View style={styles.sectionContainer}>
                     <Text style={styles.sectionHeader}>Personal Information</Text>
                     <Text style={styles.detailRow}>Email: <Text style={styles.boldText}>{selectedPatient.email || 'N/A'}</Text></Text>
@@ -275,7 +338,6 @@ export default function Customer() {
                     <Text style={styles.detailRow}>Occupation: <Text style={styles.boldText}>{selectedPatient.occupation || 'N/A'}</Text></Text>
                   </View>
 
-                  {/* Medical History Section */}
                   <View style={styles.sectionContainer}>
                     <Text style={styles.sectionHeader}>Medical History & Allergies</Text>
                     {selectedPatient.medicalHistory ? (
@@ -287,7 +349,6 @@ export default function Customer() {
                         <Text style={styles.detailRow}>Serious Illness: <Text style={styles.boldText}>{selectedPatient.medicalHistory.seriousIllness ? `Yes (${selectedPatient.medicalHistory.seriousIllnessDetail || 'No details'})` : 'No'}</Text></Text>
                         <Text style={styles.detailRow}>Smoking: <Text style={styles.boldText}>{selectedPatient.medicalHistory.smoking ? 'Yes' : 'No'}</Text></Text>
                         
-                        {/* Allergies sub-block */}
                         <Text style={[styles.nestedTitle, { marginTop: 10 }]}>Allergies & Reactions:</Text>
                         {selectedPatient.medicalHistory.allergies ? (
                           Object.entries(selectedPatient.medicalHistory.allergies).map(([k, v]) => (
@@ -302,7 +363,6 @@ export default function Customer() {
                     )}
                   </View>
 
-                  {/* Conditions Section (medicalHistoryPart2) */}
                   <View style={styles.sectionContainer}>
                     <Text style={styles.sectionHeader}>Medical Conditions</Text>
                     {selectedPatient.medicalHistoryPart2?.conditions ? (
@@ -335,12 +395,17 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
   tabText: { fontWeight: '600', color: '#666' },
   scrollContent: { padding: 20 },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 10, color: '#666', fontWeight: '600' },
+  emptyContainer: { alignItems: 'center', marginTop: 50 },
+  emptyText: { color: '#888', marginTop: 10, fontWeight: '600' },
   cardContainer: { backgroundColor: '#FFF', borderRadius: 20, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
   cardMain: { flexDirection: 'row', padding: 18, alignItems: 'center' },
   iconBox: { width: 50, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
   info: { marginLeft: 15, flex: 1 },
   name: { fontSize: 16, fontWeight: '700' },
   typeText: { fontSize: 11, color: '#888', textTransform: 'uppercase', marginTop: 2 },
+  reasonText: { fontSize: 12, color: '#D32F2F', marginTop: 4, fontWeight: '500' },
   patientDetailsBtn: { flexDirection: 'row', backgroundColor: '#F0F7FF', paddingVertical: 10, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E1EEF8' },
   patientDetailsBtnText: { color: '#2196F3', fontWeight: '700', fontSize: 13, marginLeft: 6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 15 },
